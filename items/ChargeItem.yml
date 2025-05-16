@@ -1,0 +1,217 @@
+ChargeItem:
+      description: >
+        represents a item related to a service or a product, taxable
+      type: object
+      required: 
+        - Quantity
+        - Description
+        - Amount
+        - VATRate
+      properties:
+        ftChargeItemID:
+          type: string
+          format: uuid
+          nullable: true
+          readOnly: true
+          default: null
+          description: >
+            optional
+            used as an identifier of a chargeitem, when reading data
+        Quantity:
+          oneOf:
+            - type: integer
+              format: int64
+              nullable: false
+              default: 1
+            - type: number
+              format: double
+              nullable: false
+              default: 1.0
+          description: >
+            defines the quantity of the line item.
+            quantities of line items with same `Description`, `VATRate` and itemprice (=`Amount`/`Quantity`) can be accumulated for better visualization.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+        Description:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            defines the description of the line item. line items with same `Description`, `VATRate` and itemprice (=`Amount`/`Quantity`) can be accumulated for better visualization
+        Amount:
+          oneOf:
+            - type: integer
+              format: int64
+              nullable: false
+              default: 0
+            - type: number
+              format: double
+              nullable: false
+              default: 0.0
+          description: >
+            defines the (total) amount of the line item.
+            to get itemprice the amount need to be devided by quantity.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+        VATRate:
+          oneOf:
+            - type: integer
+              format: int64
+              nullable: false
+              default: 0
+            - type: number
+              format: double
+              nullable: false
+              default: 0.0
+          description: >
+            defines the value added tax rate in percentage of the line item.
+            line items with same `Description`, `VATRate` and itemprice (=`Amount`/`Quantity`) can be accumulated for better visualization.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+        ftChargeItemCase:
+          type: integer
+          format: uint64
+          nullable: false
+          default: 0
+          description: >
+            optional
+            defines the type of service or product related to fiskaltrust reference. for detailed definition goto https://docs.fiskaltrust.eu !TODO!
+            this is relevant for fiskaltrust middleware processing and is a country specific mapping.
+            as fallback when not specified, a service or product delivered at the point-of-sale with defined `VATRate` is used.
+        ftChargeItemCaseData:
+          oneOf:
+            - type: string
+              nullable: true
+            - type: object
+              nullable: false
+              additionalProperties: true
+          description: >
+            optional
+            gives additional details for defined type of service or product related to fiskaltrust reference. for detailed definition goto https://docs.fiskaltrust.eu !TODO!
+        VATAmount:
+          oneOf:
+            - type: integer
+              format: int64
+            - type: number
+              format: double
+          nullable: true
+          default: null
+          description: >
+            optional
+            when given and not null this amount is used as the (total) value added taxes amount for the line item to avoid rounding when accumulating value added taxes.
+            systems which are using net amounts as central calculation should alsways use this property.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+        Moment:
+          type: string
+          format: date-time
+          nullable: true
+          default: null
+          description: >
+            optional
+            moment at which the serivce or product was ordered or delivered, must be provided in UTC.
+            accumulated line items get the minimum (first) moment.
+            if not given, the `cbReceiptMoment` is used as fallback
+          example: "2020-06-29T17:45:40.505Z"
+        Position:
+          oneOf:
+            - type: integer
+              format: int64
+              nullable: false
+              default: 0
+            - type: number
+              format: double
+              nullable: false
+              default: 0.0
+          description: >
+            optional
+            used to sort and group the line items for receipt visualization.
+            accumulated line items get the minimum (first) position.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+            with a specific instruction/flag in `ftReceiptCase` a grouping of multiple line items can be activated. if this is the case,  `Position` is threaded as a decimal number, the whole number represents the grouped line item and the fraction part is used within the group
+        AccountNumber:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            account number for bookkeeping export purpose
+        CostCenter:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            cost center for cost accounting purpose
+        ProductGroup:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            product group related to line item
+        ProductNumber:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            product number related to line item
+        ProductBarcode:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            product barcode related to line item
+        Unit:
+          type: string
+          maxLength: 1023
+          nullable: true
+          default: null
+          description: >
+            optional
+            unit of measurement for the line item.
+            e.g. you have on one charging session of an electric vehicle, this would be `Quantity` 1 and the total amount of the session within `amount`. the unit of measurement could be `kW` for dc charging or `min` for ac charging.
+        UnitQuantity:
+          oneOf:
+            - type: integer
+              format: int64
+            - type: number
+              format: double
+          nullable: true
+          default: null
+          description: >
+            optional
+            the quantity related to the unit of measurement defined in `Unit`.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+            e.g. you have on one charging session of an electric vehicle, this would be `Quantity` 1 and the total amount of the session within `amount`. if the unit of measurement is `kW` for dc charging the `UnitQuantity` could be 65.4 as an example. which would mean the line item represents a charging session with a total amout of power of 65.4kW.
+        UnitPrice:
+          oneOf:
+            - type: integer
+              format: int64
+            - type: number
+              format: double
+          nullable: true
+          default: null
+          description: >
+            optional
+            the price related to the unit of measurement defined in `Unit`.
+            uses `DecimalPresissionMultiplier` as discriminator between int64 and double
+            e.g. you have on one charging session of an electric vehicle, this would be `Quantity` 1 and as example the total amount of 30.7 of the session within `amount`. if the unit of measurement is `kW` for dc charging the `UnitQuantity` could be 65.4 as an example and for the given total amount the `UnitPrice` would be 0.5. which would mean the line item represents a charging session with a total amout of power of 65.4kW with a price per kW of 0.5.          
+        Currency:
+          $ref: '#/components/schemas/CurrencyEnum'
+          nullable: false
+          default: EUR
+          description: >
+            optional
+            defines the used currency for all amounts.
+        DecimalPrecisionMultiplier:
+          $ref: '#/components/schemas/DecimalPrecisionMultiplierEnum'
+          default: 1
+          description: >
+            optional
+            is used as multiplier for decimal numbers.
+            to avoid rounding and float unsharpness the datatype can be an integer. if the intage type is used, the containing value is multiplied by `DecimalPrecisionMultiplier`. When `DecimalPresissionMultiplier` is 1, then the loating-point numbers are used.            

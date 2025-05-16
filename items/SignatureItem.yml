@@ -1,0 +1,16 @@
+SignatureItem:
+      type: object
+      properties:
+        ftSignatureItemID:
+          type: string
+          format: uuid
+        Data:
+          oneOf:
+            - type: string
+            - type: object
+        ftSignatureType:
+          type: integer
+        ftSignatureFormat:
+          type: integer
+        Caption:
+          type: string

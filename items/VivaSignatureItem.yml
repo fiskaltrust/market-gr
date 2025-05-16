@@ -1,0 +1,17 @@
+FiscalizationSignature:
+  type: object
+  properties:
+    type:
+      type: integer
+      format: int64
+      example: 1
+    data:
+      type: string
+      example: U2lnbmVkUmVjZWlwdEJhc2U2NA==
+    format:
+      type: integer
+      format: int64
+      example: 1
+    caption:
+      type: string
+      example: Receipt Signature
