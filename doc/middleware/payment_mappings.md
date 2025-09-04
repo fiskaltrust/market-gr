@@ -17,3 +17,25 @@
 | 0D - InternalMaterialConsumption |     | NOT SUPPORTED |     |
 | 0E - Grant |     | NOT SUPPORTED |     |
 | 0F – Ticket Restaurant |     | NOT SUPPORTED |     |
+
+## Middleware Docs extension
+
+#### PP - payment type
+| **Value**            | **Description**                                                                                | **Middleware version** |
+| -------------------- | ---------------------------------------------------------------------------------------------- | ---------------------- |
+| `00` | **Unknown payment type for GR**<br />This is handled like a cash payment in national currency. | 1.3.45                    |
+| `01` | **Cash payment**<br />myDATA Code `3`                                                | 1.3.45                    |
+| `02` | **NonCash**<br />cash                                                 |  NOT SUPPORTED                     |
+| `03` | **Crossed cheque**<br />cash                                                                   | 1.3.45                    |
+| `04` | **Debit card payment**<br />cash                                                            | 1.3.45                    |
+| `05` | **Credit card payment**<br />cash                                                              | 1.3.45                    |
+| `06` | **Voucher payment (coupon) - voucher by money value**<br />cash                                | 1.3.45                    |
+| `07` | **Online payment**<br />noncash                                                                | 1.3.45                    |
+| `08` | **Loyalty program Customer card payment**<br />|1.3.45|
+| `09` | **Accounts receivable**<br />| 1.3.45                    |
+| `0A` | **SEPA transfer**<br />| 1.3.45                    |
+| `0B` | **Other Bank transfer**<br />| 1.3.45                    |
+| `0C` | **Transfer to Cashbook / Vault / Owner / Employee**<br />Positive (+) amount contributes to cashbox/vault. This higher the amount in cashbox/vault.<br />Negative (-) amount lowers the amount in cashbox/vault. | NOT SUPPORTED |
+| `0D` | **Internal / Material consumption**<br />| NOT SUPPORTED |
+| `0E` | **Grant**<br />| NOT SUPPORTED |
+| `0F` | **Ticket Restaurant / (Sodexo, edenred, usw.)**<br />| NOT SUPPORTED |
