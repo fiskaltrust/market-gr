@@ -2,59 +2,58 @@
 
 ## Payment Type
 
-| Middleware Payment Type                     	| mydata Payment Method (mydata API Docs - 8.12 Payment Methods)                                                                                                                       	|
-|---------------------------------------------	|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| UnknownPaymentType - 0                      	| Cash - 3                                                                                                                                                                             	|
-| CashPayment - 1                             	| Cash - 3                                                                                                                                                                             	|
-| NonCash - 2                                 	| NOT SUPPORTED                                                                                                                                                                        	|
-| CrossedCheque - 3                           	| Check - 4                                                                                                                                                                            	|
-| DebitCardPayment - 4                        	| PosEPos - 7                                                                                                                                                                          	|
-| CreditCardPayment - 5                       	| PosEPos - 7                                                                                                                                                                          	|
-| VoucherPaymentCouponVoucherByMoneyValue - 6 	| Check - 4                                                                                                                                                                            	|
-| OnlinePayment - 7                           	| NOT SUPPORTED                                                                                                                                                                           	|
-| LoyaltyProgramCustomerCardPayment - 8       	| NOT SUPPORTED                                                                                                                                                                        	|
-| AccountsReceivable - 9                      	| OnCredit - 5                                                                                                                                                                         	|
-| SEPATransfer - 0A                           	| if Payment Description = "IRIS" => IrisDirectPayments - 8<br/> if PayItem.Description == "RF code payment (Web banking)" => Web Banking 6 <br/> Domestic Payments Account Number  - 1	|
-| OtherBankTransfer - 0B                      	|  Foreign Payments Account Number - 2                                                                                                                                                                      	|
-| TransferToCashbookVaultOwnerEmployee - 0C   	| NOT SUPPORTED                                                                                                                                                                        	|
-| InternalMaterialConsumption - 0D            	| NOT SUPPORTED                                                                                                                                                                        	|
-| Grant - 0E                                  	| NOT SUPPORTED                                                                                                                                                                        	|
-| TicketRestaurant - 0F                       	| NOT SUPPORTED                                                                                                                                                                        	|
+| Middleware Payment Type | mydata Payment Method |
+|---|---|
+| UnknownPaymentType - 0 | Cash - 3 |
+| CashPayment - 1 | Cash - 3 |
+| NonCash - 2 | NOT SUPPORTED |
+| CrossedCheque - 3 | Check - 4 |
+| DebitCardPayment - 4 | PosEPos - 7 |
+| CreditCardPayment - 5 | PosEPos - 7 |
+| VoucherPaymentCouponVoucherByMoneyValue - 6 | Check - 4 |
+| OnlinePayment - 7 | NOT SUPPORTED |
+| LoyaltyProgramCustomerCardPayment - 8 | NOT SUPPORTED |
+| AccountsReceivable - 9 | OnCredit - 5 |
+| SEPATransfer - 0A | if Payment Description = "IRIS" => IrisDirectPayments - 8<br/> if PayItem.Description == "RF code payment (Web banking)" => Web Banking - 6 <br/> Domestic Payments Account Number - 1 |
+| OtherBankTransfer - 0B | Foreign Payments Account Number - 2 |
+| TransferToCashbookVaultOwnerEmployee - 0C | NOT SUPPORTED |
+| InternalMaterialConsumption - 0D | NOT SUPPORTED |
+| Grant - 0E | NOT SUPPORTED |
+| TicketRestaurant - 0F | NOT SUPPORTED |
 
 # In Progress
 ## VAT Category
 
-| Middleware VAT Category  	| mydata VAT Category (myDATA API Docs - 8.2 VAT Category) 	|
-|--------------------------	|----------------------------------------------------------	|
-| UnknownVatRate- 0   	| ?                               |
-| DiscountedVatRate1 - 1   	| VatRate13 - 2                                            	|
-| DiscountedVatRate2 - 2   	| VatRate6 - 3                                             	|
-| NormalVatRate - 3        	| VatRate24 - 1                                            	|
-| SuperReducedVatRate1 - 4 	| VatRate17 - 4                                            	|
-| SuperReducedVatRate2 - 5 	| VatRate9 - 5                                             	|
-| ParkingVatRate - 6       	| VatRate4 - 6                                             	|
-| ZeroVatRate - 7          	| ExcludingVat - 7                                         	|
-| NotTaxable - 8           	| RegistrationsWithoutVat - 8                              	|
-| ?                        	| VAT rate 3% (Article 31, Law 5057/2023) - 9              	|
-| ?                        	| VAT rate 4% (Article 31, Law 5057/2023) - 10             	|
+| Middleware VAT Category | mydata VAT Category |
+|---|---|
+| UnknownVatRate - 0 | ? |
+| DiscountedVatRate1 - 1 | VatRate13 - 2 |
+| DiscountedVatRate2 - 2 | VatRate6 - 3 |
+| NormalVatRate - 3 | VatRate24 - 1 |
+| SuperReducedVatRate1 - 4 | VatRate17 - 4 |
+| SuperReducedVatRate2 - 5 | VatRate9 - 5 |
+| ParkingVatRate - 6 | VatRate4 - 6 |
+| ZeroVatRate - 7 | ExcludingVat - 7 |
+| NotTaxable - 8 | RegistrationsWithoutVat - 8 |
+| ? | VAT rate 3% (Article 31, Law 5057/2023) - 9 |
+| ? | VAT rate 4% (Article 31, Law 5057/2023) - 10 |
 
 ## Income Category
 
-
-| Code          | Description                                           | Category        |
-|---------------|-------------------------------------------------------|-----------------|
-| category1_1   | Commodity Sale Income (+)/(-)                         | 75 myDATA REST API |
-| category1_2   | Product Sale Income (+)/(-)                           |                 |
-| category1_3   | Provision of Services Income (+)/(-)                  |                 |
-| category1_4   | Sale of Fixed Assets Income (+)/(-)                   |                 |
-| category1_5   | Other Income/Profits (+)/(-)                          |                 |
-| category1_6   | Self-Deliveries/Self-Supplies (+)/(-)                 |                 |
-| category1_7   | Income on behalf of Third Parties (+)/(-)            |                 |
-| category1_8   | Past fiscal years income (+)/(-)                      |                 |
-| category1_9   | Future fiscal years income (+)/(-)                    |                 |
-| category1_10  | Other Income Adjustment/Regularisation Entries (+)/(-)|                |
-| category1_95  | Other Income-related Information (+)/(-)              |                 |
-| category3     | Delivery                                              |                 |
+| Code | Description | Category |
+|---|---|---|
+| category1_1 | Commodity Sale Income (+)/(-) | 75 myDATA REST API |
+| category1_2 | Product Sale Income (+)/(-) | |
+| category1_3 | Provision of Services Income (+)/(-) | |
+| category1_4 | Sale of Fixed Assets Income (+)/(-) | |
+| category1_5 | Other Income/Profits (+)/(-) | |
+| category1_6 | Self-Deliveries/Self-Supplies (+)/(-) | |
+| category1_7 | Income on behalf of Third Parties (+)/(-) | |
+| category1_8 | Past fiscal years income (+)/(-) | |
+| category1_9 | Future fiscal years income (+)/(-) | |
+| category1_10 | Other Income Adjustment/Regularisation Entries (+)/(-) | |
+| category1_95 | Other Income-related Information (+)/(-) | |
+| category3 | Delivery | |
 
 ## Income Classification
 
