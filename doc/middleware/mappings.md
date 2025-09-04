@@ -1,27 +1,5 @@
-# Finished
+# WIP
 
-## Payment Type
-
-| Middleware Payment Type | mydata Payment Method |
-|---|---|
-| UnknownPaymentType - 0 | Cash - 3 |
-| CashPayment - 1 | Cash - 3 |
-| NonCash - 2 | NOT SUPPORTED |
-| CrossedCheque - 3 | Check - 4 |
-| DebitCardPayment - 4 | PosEPos - 7 |
-| CreditCardPayment - 5 | PosEPos - 7 |
-| VoucherPaymentCouponVoucherByMoneyValue - 6 | Check - 4 |
-| OnlinePayment - 7 | NOT SUPPORTED |
-| LoyaltyProgramCustomerCardPayment - 8 | NOT SUPPORTED |
-| AccountsReceivable - 9 | OnCredit - 5 |
-| SEPATransfer - 0A | if Payment Description = "IRIS" => IrisDirectPayments - 8<br/> if PayItem.Description == "RF code payment (Web banking)" => Web Banking - 6 <br/> Domestic Payments Account Number - 1 |
-| OtherBankTransfer - 0B | Foreign Payments Account Number - 2 |
-| TransferToCashbookVaultOwnerEmployee - 0C | NOT SUPPORTED |
-| InternalMaterialConsumption - 0D | NOT SUPPORTED |
-| Grant - 0E | NOT SUPPORTED |
-| TicketRestaurant - 0F | NOT SUPPORTED |
-
-# In Progress
 ## VAT Category
 
 | Middleware VAT Category | mydata VAT Category |
