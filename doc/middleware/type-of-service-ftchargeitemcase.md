@@ -22,7 +22,7 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 | `1` | **Discounted-1 VAT rate**<br /> | **6% - Code 3** <br/> **9% - Code 5** <br/><br/> _Depending on the selected VAT Rate <br/> it is internally mapped to the right myDATA Code._  |
 | `2` | **Discounted 2 VAT rate**<br /> | **13% - Code 2** <br/> **17% - Code 4** <br/><br/> _Depending on the selected VAT Rate <br/> it is internally mapped to the right myDATA Code._ |
 | `3` | **Normal VAT rate**<br /> | **24% - Code 1** |
-| `4` | **Super reduced 1 VAT rate**<br /> | **VatRate4 - 6** |
+| `4` | **Super reduced 1 VAT rate**<br /> | **4% - Code 6** |
 | `5` | **Super reduced 2 VAT rate**<br /> | |
 | `6` | **Parking VAT rate**<br /> | |
 | `7` | **Zero VAT rate**<br /> | **0% - Code 7** |
