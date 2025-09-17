@@ -51,14 +51,6 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 
 <sup>3</sup> Currently the transmission of expense categories is not supported.
 
-#### NN - nature of VAT  
-
-TBD
-
-#### lll - local taggin/flag
-
-TBD
-
 #### gggg - global tagging/flag 
 
 | **Value**            | **Description**                                                                                        | 
