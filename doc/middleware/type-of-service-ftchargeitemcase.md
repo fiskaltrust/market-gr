@@ -43,8 +43,8 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 | `5` | **Catalog service / Own Products**<br /> | **IncomeCategory category1_2** | 
 | `6` | **Not own sales / Agency business**<br />| | 
 | `7` | **Own Consumption**<br />| **IncomeCategory category1_6** | 
-| `8` | **Grant**<br />For Unreal Grant use V=0 to 7<br />For Real Grant use V=8  | **NOT SUPPORTED** | 
-| `9` | **Receivable**<br />Receiveable creation is negative (-) amount<br />Receiveable reduction is positive (+) amount.<br />IsVoid can be applied to reverse amounts.<br />Avoid to use this, use PayItem instead.  | **NOT SUPPORTED** |   
+| `8` | **Grant**<br />For Unreal Grant use V=0 to 7<br />For Real Grant use V=8  | | 
+| `9` | **Receivable**<br />Receiveable creation is negative (-) amount<br />Receiveable reduction is positive (+) amount.<br />IsVoid can be applied to reverse amounts.<br />Avoid to use this, use PayItem instead.  | |   
 | `A` | **Cash Transfer**<br />Cash Transfer to till is positive (+) amount<br />Cash Transfer from till is negative (-) amount.<br />Only useable with V=8, Not Taxable. <br />IsVoid can be applied to reverse amounts| |    
 
 <sup>2</sup> The income categories category1_4, category1_5, category 1_7, category 1_8, category1_9, category1_10, category 1_95, category3 are currently not supported.
