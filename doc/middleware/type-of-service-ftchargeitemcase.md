@@ -33,7 +33,7 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 
 #### S - Type of Service  
 
-| **Value**            | **Description** | myDATA Processing| 
+| **Value**            | **Description** | myDATA Processing <sup>2</sup>&nbsp;&nbsp;<sup>3</sup>| 
 | -------------------- | -------------- | -------------- |
 | `0` | **Unknown type of service**<br />With the help of the VAT-rates table saved within fiskaltrust.SecurityMechanisms. |  | 
 | `1` | **Delivery (supply of goods)**<br />| **IncomeCategory category1_1** | 
@@ -46,6 +46,10 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 | `8` | **Grant**<br />For Unreal Grant use V=0 to 7<br />For Real Grant use V=8  | **NOT SUPPORTED** | 
 | `9` | **Receivable**<br />Receiveable creation is negative (-) amount<br />Receiveable reduction is positive (+) amount.<br />IsVoid can be applied to reverse amounts.<br />Avoid to use this, use PayItem instead.  | **NOT SUPPORTED** |   
 | `A` | **Cash Transfer**<br />Cash Transfer to till is positive (+) amount<br />Cash Transfer from till is negative (-) amount.<br />Only useable with V=8, Not Taxable. <br />IsVoid can be applied to reverse amounts| |    
+
+<sup>2</sup> The income categories category1_4, category1_5, category 1_7, category 1_8, category1_9, category1_10, category 1_95, category3 are currently not supported.
+
+<sup>3</sup> Currently the transmission of expense categories is not supported.
 
 #### NN - nature of VAT  
 
