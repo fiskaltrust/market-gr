@@ -1,20 +1,19 @@
 # WIP
 
-## VAT Category
+#### V - VAT  
+https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm 
 
-| Middleware VAT Category | mydata VAT Category |
-|---|---|
-| UnknownVatRate - 0 | ? |
-| DiscountedVatRate1 - 1 | VatRate13 - 2 |
-| DiscountedVatRate2 - 2 | VatRate6 - 3 |
-| NormalVatRate - 3 | VatRate24 - 1 |
-| SuperReducedVatRate1 - 4 | VatRate17 - 4 |
-| SuperReducedVatRate2 - 5 | VatRate9 - 5 |
-| ParkingVatRate - 6 | VatRate4 - 6 |
-| ZeroVatRate - 7 | ExcludingVat - 7 |
-| NotTaxable - 8 | RegistrationsWithoutVat - 8 |
-| ? | VAT rate 3% (Article 31, Law 5057/2023) - 9 |
-| ? | VAT rate 4% (Article 31, Law 5057/2023) - 10 |
+| **Value**            | **Description**| **myDATA VAT Category**|
+| -------------------- | -------------- |  -------------- | 
+| `0` | **Unknown type of service for GR**<br />With the help of the VAT-rates table saved within fiskaltrust.SecurityMechanisms. | |
+| `1` | **Discounted-1 VAT rate**<br /> | VatRate6 - 3  |
+| `2` | **Discounted 2 VAT rate**<br /> | VatRate13 - 2 |
+| `3` | **Normal VAT rate**<br /> | VatRate24 - 1 |
+| `4` | **Super reduced 1 VAT rate**<br /> | VatRate17 - 4 |
+| `5` | **Super reduced 2 VAT rate**<br /> | VatRate9 - 5 |
+| `6` | **Parking VAT rate**<br /> | VatRate4 - 6 |
+| `7` | **Zero VAT rate**<br /> | ExcludingVat - 7 |
+| `8` | **Not Taxable**<br /> | RegistrationsWithoutVat - 8  |
 
 ## Income Category
 
