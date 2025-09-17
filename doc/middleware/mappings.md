@@ -1,20 +1,5 @@
 # WIP
 
-#### V - VAT  
-https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm 
-
-| **Value**            | **Description**| **myDATA VAT Category**|
-| -------------------- | -------------- |  -------------- | 
-| `0` | **Unknown type of service for GR**<br />With the help of the VAT-rates table saved within fiskaltrust.SecurityMechanisms. | |
-| `1` | **Discounted-1 VAT rate**<br /> | VatRate6 - 3  |
-| `2` | **Discounted 2 VAT rate**<br /> | VatRate13 - 2 |
-| `3` | **Normal VAT rate**<br /> | VatRate24 - 1 |
-| `4` | **Super reduced 1 VAT rate**<br /> | VatRate17 - 4 |
-| `5` | **Super reduced 2 VAT rate**<br /> | VatRate9 - 5 |
-| `6` | **Parking VAT rate**<br /> | VatRate4 - 6 |
-| `7` | **Zero VAT rate**<br /> | ExcludingVat - 7 |
-| `8` | **Not Taxable**<br /> | RegistrationsWithoutVat - 8  |
-
 ## Income Category
 
 | Code | Description | Category |
