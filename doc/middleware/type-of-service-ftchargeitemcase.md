@@ -38,7 +38,7 @@ https://europa.eu/youreurope/business/taxation/vat/vat-rules-rates/index_en.htm
 | `0` | **Unknown type of service**<br />With the help of the VAT-rates table saved within fiskaltrust.SecurityMechanisms. |  | 
 | `1` | **Delivery (supply of goods)**<br />| **IncomeCategory category1_1** | 
 | `2` | **Other service (supply of service)**<br />| **IncomeCategory category1_3** | 
-| `3` | **Tip**<br /> For owner use V=0 to 7, related to total amount <br /> For Employee use V=8, Not Taxable. | **Processed as Payment** | 
+| `3` | **Tip**<br /> For owner use V=0 to 7, related to total amount <br /> For Employee use V=8, Not Taxable. | | 
 | `4` | **Voucher**<br /> For Single-Use-Voucher use V=0 to 7<br />For Multi-Use-Voucher use V=8, Not Taxable<br />Voucher Sale is a positive (+) amount.<br />Voucher Redeem is a negative (-) amount.<br />IsVoid can be applied to reverse amounts.<br />Avoid to use this for Multi-Use-Voucher, use PayItem instead, with ShowInChargeItems flag. For Single-Use-Voucher, apply the ShowInPayItems flag to visualize it similar to payment and to keep the total amount unreduced. | | 
 | `5` | **Catalog service / Own Products**<br /> | **IncomeCategory category1_2** | 
 | `6` | **Not own sales / Agency business**<br />| | 
