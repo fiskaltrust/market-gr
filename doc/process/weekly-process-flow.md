@@ -215,17 +215,6 @@ Meeting recordings and transcripts must be enabled.
 
 ---
 
-## Whiteboard Flow (Conceptual Mapping)
-
-1. Inquiry → GitHub Issue (`market-gr`)
-2. Classification & prioritization (Tuesday)
-3. Business‑case match or creation
-4. Implementation (incl. Viva proxy logic if required)
-5. Friday review via executable example
-6. Monday production release
-
----
-
 ## Expected Outcome
 
 If followed consistently, this process ensures:
@@ -234,7 +223,3 @@ If followed consistently, this process ensures:
 - Reduced escalation noise
 - Clear accountability
 - Traceability from request → example → implementation → release
-
----
-
-*End of document*
