@@ -54,7 +54,7 @@ This cadence applies to:
 
 ### Overall Flow & Backlog Ownership
 
-- **Christian**
+- **Christian Kreutzer**
   - Owns the weekly cadence
   - Maintains backlog visibility and prioritization
   - Runs planning & review structure
@@ -62,21 +62,21 @@ This cadence applies to:
 
 ### Business & Partner Interface
 
-- **Martin**
+- **Martin Grubinger**
   - Owns the business relationship with Viva
   - Aligns commercial and partner priorities
   - Works with Christian on backlog prioritization
 
 ### Business Case Ownership
 
-- **Mijo**
+- **Mijo Milicevic**
   - Owns the Business Case Repository
   - Ensures every relevant issue has a concrete example
   - Coordinates example creation with Greek team / Theo
 
 ### Technical Execution
 
-- **Stefan + Development Team**
+- **Stefan Kert + Development Team**
   - Execute implementation
   - Maintain developer tools and sample execution
   - Ensure items move cleanly through the board states
