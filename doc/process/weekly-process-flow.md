@@ -133,7 +133,7 @@ An item can be reviewed only if:
    - Production bug
    - Feature / business case
    - Usage or payload issue
-4. Prioritization (Christian + Martin)
+4. Prioritization (FT:Christian, Martin - VIVA:Costas)
 5. Enforcement of the **business‑case gate**
 6. Agreement on which items are expected to reach **Review** this week
 
