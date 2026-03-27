@@ -119,6 +119,43 @@ An item can be reviewed only if:
 
 ---
 
+## Backlog Management
+
+### Single Source of Truth
+
+The GitHub project board at <https://github.com/orgs/fiskaltrust/projects/83> is the single source of truth for all work.  
+Anything not on the board will not be worked on.
+
+### Board Columns
+
+The backlog board (<https://github.com/orgs/fiskaltrust/projects/83/views/1>) uses the following columns:
+
+| Column          | Meaning |
+|-----------------|---------|
+| **Undefined**   | Newly created, not yet assessed |
+| **Refined**     | Assessed and understood |
+| **Ready**       | Prioritized and ready to be picked up — worked in priority order |
+| **In Progress** | Actively being worked on this week — should move to Review; may still block |
+| **Review**      | Done and shown at Friday review — goes live Monday |
+
+### Inbox Triage
+
+Everything filed in the repo lands in the **Inbox** view (<https://github.com/orgs/fiskaltrust/projects/83/views/9>).
+
+- Triage happens **Tuesday** before the planning call with Costas
+- For each item, **Importance** (how critical) and **Ambiguity** (how unclear) are assessed
+- This gives a rough effort estimate
+- Items with **Ambiguity > 5** cannot be worked on until clarified
+
+### Review & Release Cycle
+
+- Everything in **Review** is shown on **Friday** and goes live on **Monday**
+- Issues in Review must include a closing comment describing how/where things were tested, what the business case is, and a link to the developer portal
+- Everything in **In Progress** should move to Review within the current week — it can always block back if needed
+- Everything in **Ready** is picked up in priority order — all tasks there are already prioritized
+
+---
+
 ## Weekly Cadence
 
 ### Tuesday – Planning & Prioritization
