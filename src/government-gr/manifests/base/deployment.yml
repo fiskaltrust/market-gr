@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: government-gr-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: government-gr
+  template:
+    metadata:
+      labels:
+        app: government-gr
+    spec:
+      serviceAccountName: government-gr-sa
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: government-gr
+          image: government-gr-image
+          envFrom:
+            - configMapRef:
+                name: government-gr-config
+            - secretRef:
+                name: secret-appsettings-government-gr
+          ports:
+            - containerPort: 8080
