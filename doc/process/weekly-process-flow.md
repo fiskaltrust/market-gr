@@ -46,7 +46,9 @@ This cadence applies to:
 
 5. **Fixed release rhythm**
 
-   Items reviewed on Friday are released to production on Monday unless blocking feedback is raised in time.
+   Items reviewed on Friday are released to production on **Tuesday**.
+   Monday is a dedicated blocking window — the partner can test and raise objections.
+   If no blocking feedback is received by EOD Monday, the release proceeds automatically.
 
 ---
 
@@ -136,7 +138,7 @@ The backlog board (<https://github.com/orgs/fiskaltrust/projects/83/views/1>) us
 | **Refined**     | Assessed and understood |
 | **Ready**       | Prioritized and ready to be picked up — worked in priority order |
 | **In Progress** | Actively being worked on this week — should move to Review; may still block |
-| **Review**      | Done and shown at Friday review — goes live Monday |
+| **Review**      | Done and shown at Friday review — goes live Tuesday |
 
 ### Inbox Triage
 
@@ -149,7 +151,10 @@ Everything filed in the repo lands in the **Inbox** view (<https://github.com/or
 
 ### Review & Release Cycle
 
-- Everything in **Review** is shown on **Friday** and goes live on **Monday**
+- Everything in **Review** is shown on **Friday** and goes live on **Tuesday**
+- **Monday** is a dedicated blocking window — the partner can test and raise objections
+- If no block is raised by EOD Monday, the release proceeds automatically on Tuesday
+- Blocking applies **per issue** by default; full rollback of the entire release requires an explicit decision
 - Issues in Review must include a closing comment describing how/where things were tested, what the business case is, and a link to the developer portal
 - Everything in **In Progress** should move to Review within the current week — it can always block back if needed
 - Everything in **Ready** is picked up in priority order — all tasks there are already prioritized
@@ -220,32 +225,51 @@ Meeting recordings and transcripts must be enabled.
 
 ---
 
-### Weekend – Testing Window
+### Weekend – Automated Testing
 
 - Automated integration tests run
-- Viva performs end‑to‑end testing against sandbox
 - No scope changes
 
 ---
 
-### Monday – Production Release
+### Monday – Blocking Window
+
+**Objective:** Give the partner a dedicated window to test and block individual items before release.
+
+**Process:**
+
+1. Partner (Viva) performs end‑to‑end testing against sandbox
+2. To **block** an item, the partner must raise it **explicitly and in writing** — via **email** or **GitHub issue**
+3. Blocking is **per issue**, not per release:
+   - A blocked issue is moved back to In Progress (or a new issue is created)
+   - Remaining unblocked items proceed to release
+4. Full rollback of the entire release is an exceptional, explicit decision — not the default
+5. **No feedback by EOD Monday = release proceeds** — silence is treated as no objection
+
+**Authoritative channels for blocking:**
+- Email
+- GitHub Issues
+
+---
+
+### Tuesday – Production Release
 
 **Objective:** Move reviewed work to production predictably.
 
 **Process:**
 
-1. Middleware team releases reviewed items to production
-2. If blocking issues are reported Monday morning:
-   - Item is moved back from Review to In Progress
-3. If no blocking feedback arrives by Monday mid‑day:
-   - Item is considered successfully released
-   - Issue can be closed or marked Done
+1. Check for any blocks raised during Monday's blocking window
+2. Middleware team releases all unblocked items to production
+3. Blocked issues remain in progress; everything else goes live
+4. Released issues can be closed or marked Done
 
 ---
 
 ## Communication Rules
 
 - GitHub issues are the primary communication channel
+- **Release approvals and blocking decisions** must be communicated via **email** or **GitHub issues** only
+- Teams chats (including external partner chats) are **not** authoritative for release decisions
 - No ad‑hoc chat‑based escalation for non‑incidents
 - Friday review feedback goes into issues, not meetings
 - Support and integration questions will later be routed via SupportYourApp (once staffed)
