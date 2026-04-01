@@ -268,7 +268,8 @@ Meeting recordings and transcripts must be enabled.
 ## Communication Rules
 
 - GitHub issues are the primary communication channel
-- **Release approvals and blocking decisions** must be communicated via **email** or **GitHub issues** only
+- **Release blocking decisions** must be communicated via **email** to (christian.kreutzer@fiskaltrust.eu, martin.grubinger@fiskaltrust.eu, stefan.kert@fiskaltrust.eu)
+  and a valid reason need to be present in the **GitHub issues**
 - Teams chats (including external partner chats) are **not** authoritative for release decisions
 - No ad‑hoc chat‑based escalation for non‑incidents
 - Friday review feedback goes into issues, not meetings
