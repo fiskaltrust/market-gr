@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: government-gr-config
+data:
+  Environment: production
+  ConnectionStrings__ReadOnlySQL: Server=fiskaltrust-we-1.database.windows.net;Authentication=Active Directory Default; Encrypt=True; Database=common
+  ConnectionStrings__AzureMonitor: ""
+  MyData__BaseUrl: "https://mydatapi.aade.gr/myDATA/"

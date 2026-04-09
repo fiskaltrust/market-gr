@@ -1,0 +1,118 @@
+name: Government GR CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/government-gr/**"
+      - ".github/workflows/government-api*.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/government-gr/**"
+      - ".github/workflows/government-api*.yml"
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  ci:
+    name: Run CI
+    uses: fiskaltrust/shared-workflows/.github/workflows/dotnet-ci.yml@main
+    with:
+      base-path: src/government-gr
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+
+  build:
+    uses: fiskaltrust/shared-workflows/.github/workflows/dotnet-container-build.yml@main
+    with:
+      base-path: src/government-gr
+      publish-project: src/government-gr/src/fiskaltrust.Api.Government.GR/fiskaltrust.Api.Government.GR.csproj
+      image-repository: fiskaltrust/gr/government
+      manifests-path: src/government-gr/manifests
+      tar-file-name: government-gr.tar
+    secrets: inherit
+
+  push_oci_artifact_dev_registry:
+    name: Push to Dev Registry
+    needs: [ci, build]
+    uses: fiskaltrust/shared-workflows/.github/workflows/acr-push.yml@main
+    with:
+      push-oci: true
+      push-container: true
+      manifests-environment: sandbox
+      image-tag: ${{ needs.build.outputs.tag }}
+      image-repository: fiskaltrust/gr/government
+      image-tar-file: government-gr.tar
+      kustomize-image-name: government-gr-image
+      oci-repository: fiskaltrust/gr/government-manifests
+      environment: ${{ vars.AZURE_ACR_CRDEVWESTEUROPE }}
+      acr-name: ${{ vars.AZURE_ACR_CRDEVWESTEUROPE }}
+      azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_FISKALTRUST_DEVELOP }}
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  push_oci_artifact_prod_registry:
+    name: Push to Prod Registry
+    if: github.ref == 'refs/heads/main'
+    needs: [build, push_oci_artifact_dev_registry]
+    uses: fiskaltrust/shared-workflows/.github/workflows/acr-push.yml@main
+    with:
+      push-oci: true
+      import-images: true
+      manifests-environment: production
+      image-tag: ${{ needs.build.outputs.tag }}
+      image-repository: fiskaltrust/gr/government
+      image-tar-file: government-gr.tar
+      kustomize-image-name: government-gr-image
+      oci-repository: fiskaltrust/gr/government-manifests
+      environment: ${{ vars.AZURE_ACR_CRPRODWESTEUROPE }}
+      acr-name: ${{ vars.AZURE_ACR_CRPRODWESTEUROPE }}
+      azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_FISKALTRUST_PROD }}
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  promote_sandbox:
+    needs: push_oci_artifact_dev_registry
+    uses: fiskaltrust/shared-workflows/.github/workflows/oci-promote.yml@main
+    with:
+      environment: ${{ vars.AZURE_ACR_CRDEVWESTEUROPE }}
+      acr-name: ${{ vars.AZURE_ACR_CRDEVWESTEUROPE }}
+      azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_FISKALTRUST_DEVELOP }}
+      digest: ${{ needs.push_oci_artifact_dev_registry.outputs.digest }}
+      tag: sandbox
+      oci-repository: fiskaltrust/gr/government-manifests
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  promote_production:
+    if: github.ref == 'refs/heads/main'
+    needs: push_oci_artifact_prod_registry
+    uses: fiskaltrust/shared-workflows/.github/workflows/oci-promote.yml@main
+    with:
+      environment: ${{ vars.AZURE_ACR_CRPRODWESTEUROPE }}
+      acr-name: ${{ vars.AZURE_ACR_CRPRODWESTEUROPE }}
+      azure-subscription-id: ${{ vars.AZURE_SUBSCRIPTION_FISKALTRUST_PROD }}
+      digest: ${{ needs.push_oci_artifact_prod_registry.outputs.digest }}
+      tag: production
+      oci-repository: fiskaltrust/gr/government-manifests
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read

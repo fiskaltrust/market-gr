@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: government-gr-config
+data:
+  Environment: Sandbox
+  ConnectionStrings__ReadOnlySQL: Server=fiskaltrust.database.windows.net;Authentication=Active Directory Default; Encrypt=True; Database=crm-sandbox
+  ConnectionStrings__AzureMonitor: ""
+  MyData__BaseUrl: "https://mydataapidev.aade.gr/myDATA/"
