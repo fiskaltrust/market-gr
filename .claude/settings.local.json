@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(az ad app list:*)",
+      "Bash(az keyvault list:*)",
+      "Bash(az account show:*)"
+    ]
+  }
+}

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using fiskaltrust.Api.Government.GR.Extensions;
 using OpenTelemetry;
 
 namespace fiskaltrust.Api.Government.GR.Telemetry;
@@ -22,6 +21,10 @@ public class ActivityEnrichingProcessor : BaseProcessor<Activity>
             activity.ActivityTraceFlags &= ~ActivityTraceFlags.Recorded;
         }
 
-        activity.SetTags(_httpContextAccessor!.HttpContext.Request.ExtractFromHeaders(["cashboxid", "x-cashbox-id"]), ["cashbox.id", "enduser.id", "user.id"]);
+        var userId = _httpContextAccessor.HttpContext.User?.Identity?.Name;
+        if (!string.IsNullOrEmpty(userId))
+        {
+            activity.SetTag("enduser.id", userId);
+        }
     }
 }

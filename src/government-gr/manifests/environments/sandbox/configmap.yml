@@ -6,4 +6,7 @@ data:
   Environment: Sandbox
   ConnectionStrings__ReadOnlySQL: Server=fiskaltrust.database.windows.net;Authentication=Active Directory Default; Encrypt=True; Database=crm-sandbox
   ConnectionStrings__AzureMonitor: ""
+  AzureAd__TenantId: "c5d004c4-fbb8-4d7d-ad1f-b317497ea59c"
+  AzureAd__ClientId: "9d92feb4-0d43-4d3b-b0ed-26267676e28b"
+  AzureAd__Audience: "api://9d92feb4-0d43-4d3b-b0ed-26267676e28b"
   MyData__BaseUrl: "https://mydataapidev.aade.gr/myDATA/"

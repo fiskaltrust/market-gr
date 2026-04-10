@@ -8,7 +8,7 @@ public static class MyDataEndpoints
     {
         var group = app.MapGroup("/v0/mydata")
             .WithTags("myDATA Provider API")
-            .RequireAuthorization();
+            .RequireAuthorization("MyDataAccess");
 
         // POST endpoints
         group.MapPost("/SendInvoices", SendInvoices)
@@ -86,13 +86,6 @@ public static class MyDataEndpoints
         return app;
     }
 
-    private static (string? aadeUserId, string? subscriptionKey) ExtractMyDataHeaders(HttpRequest request)
-    {
-        request.Headers.TryGetValue("aade-user-id", out var aadeUserId);
-        request.Headers.TryGetValue("ocp-apim-subscription-key", out var subscriptionKey);
-        return (aadeUserId.ToString(), subscriptionKey.ToString());
-    }
-
     private static async Task<string> ReadBodyAsync(HttpRequest request)
     {
         using var reader = new StreamReader(request.Body);
@@ -108,139 +101,87 @@ public static class MyDataEndpoints
 
     private static async Task<IResult> SendInvoices(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         var body = await ReadBodyAsync(ctx.Request);
-        var response = await client.SendInvoicesAsync(body, aadeUserId, subscriptionKey);
+        var response = await client.SendInvoicesAsync(body);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> CancelInvoice(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         if (!long.TryParse(ctx.Request.Query["mark"], out var mark))
             return Results.BadRequest("Missing or invalid 'mark' query parameter");
 
-        var response = await client.CancelInvoiceAsync(mark, aadeUserId, subscriptionKey);
+        var response = await client.CancelInvoiceAsync(mark);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> SendIncomeClassification(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         var body = await ReadBodyAsync(ctx.Request);
-        var response = await client.SendIncomeClassificationAsync(body, aadeUserId, subscriptionKey);
+        var response = await client.SendIncomeClassificationAsync(body);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> SendExpensesClassification(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         var body = await ReadBodyAsync(ctx.Request);
-        var response = await client.SendExpensesClassificationAsync(body, aadeUserId, subscriptionKey);
+        var response = await client.SendExpensesClassificationAsync(body);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> SendPaymentsMethod(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         var body = await ReadBodyAsync(ctx.Request);
-        var response = await client.SendPaymentMethodsAsync(body, aadeUserId, subscriptionKey);
+        var response = await client.SendPaymentMethodsAsync(body);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> SendStatement(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
         var body = await ReadBodyAsync(ctx.Request);
-        var response = await client.SendStatementAsync(body, aadeUserId, subscriptionKey);
+        var response = await client.SendStatementAsync(body);
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestDocs(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestDocsAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestDocsAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestTransmittedDocs(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestTransmittedDocsAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestTransmittedDocsAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestMyIncome(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestMyIncomeAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestMyIncomeAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestMyExpenses(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestMyExpensesAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestMyExpensesAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestVatInfo(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestVatInfoAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestVatInfoAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestE3Info(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestE3InfoAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestE3InfoAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 
     private static async Task<IResult> RequestStatements(HttpContext ctx, IMyDataClient client)
     {
-        var (aadeUserId, subscriptionKey) = ExtractMyDataHeaders(ctx.Request);
-        if (string.IsNullOrEmpty(aadeUserId) || string.IsNullOrEmpty(subscriptionKey))
-            return Results.BadRequest("Missing aade-user-id or ocp-apim-subscription-key headers");
-
-        var response = await client.RequestStatementsAsync(ctx.Request.QueryString.Value ?? "", aadeUserId, subscriptionKey);
+        var response = await client.RequestStatementsAsync(ctx.Request.QueryString.Value ?? "");
         return await ForwardResponseAsync(response);
     }
 }
