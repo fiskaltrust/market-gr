@@ -6,4 +6,7 @@ data:
   Environment: production
   ConnectionStrings__ReadOnlySQL: Server=fiskaltrust-we-1.database.windows.net;Authentication=Active Directory Default; Encrypt=True; Database=common
   ConnectionStrings__AzureMonitor: ""
+  AzureAd__TenantId: "c5d004c4-fbb8-4d7d-ad1f-b317497ea59c"
+  AzureAd__ClientId: "TODO"
+  AzureAd__Audience: "TODO"
   MyData__BaseUrl: "https://mydatapi.aade.gr/myDATA/"
