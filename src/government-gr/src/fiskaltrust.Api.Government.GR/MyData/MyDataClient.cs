@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.Extensions.Options;
 
 namespace fiskaltrust.Api.Government.GR.MyData;
 
@@ -7,82 +8,84 @@ public class MyDataClient : IMyDataClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<MyDataClient> _logger;
+    private readonly MyDataSettings _settings;
 
-    public MyDataClient(HttpClient httpClient, ILogger<MyDataClient> logger)
+    public MyDataClient(HttpClient httpClient, ILogger<MyDataClient> logger, IOptions<AppSettings> options)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _settings = options.Value.MyData;
     }
 
-    public async Task<HttpResponseMessage> SendInvoicesAsync(string xmlContent, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> SendInvoicesAsync(string xmlContent)
     {
-        return await PostXmlAsync("SendInvoices", xmlContent, aadeUserId, subscriptionKey);
+        return await PostXmlAsync("SendInvoices", xmlContent);
     }
 
-    public async Task<HttpResponseMessage> CancelInvoiceAsync(long mark, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> CancelInvoiceAsync(long mark)
     {
-        return await PostXmlAsync($"CancelInvoice?mark={mark}", "", aadeUserId, subscriptionKey);
+        return await PostXmlAsync($"CancelInvoice?mark={mark}", "");
     }
 
-    public async Task<HttpResponseMessage> RequestDocsAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestDocsAsync(string queryString)
     {
-        return await GetAsync($"RequestDocs{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestDocs{queryString}");
     }
 
-    public async Task<HttpResponseMessage> RequestTransmittedDocsAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestTransmittedDocsAsync(string queryString)
     {
-        return await GetAsync($"RequestTransmittedDocs{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestTransmittedDocs{queryString}");
     }
 
-    public async Task<HttpResponseMessage> RequestMyIncomeAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestMyIncomeAsync(string queryString)
     {
-        return await GetAsync($"RequestMyIncome{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestMyIncome{queryString}");
     }
 
-    public async Task<HttpResponseMessage> RequestMyExpensesAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestMyExpensesAsync(string queryString)
     {
-        return await GetAsync($"RequestMyExpenses{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestMyExpenses{queryString}");
     }
 
-    public async Task<HttpResponseMessage> SendIncomeClassificationAsync(string xmlContent, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> SendIncomeClassificationAsync(string xmlContent)
     {
-        return await PostXmlAsync("SendIncomeClassification", xmlContent, aadeUserId, subscriptionKey);
+        return await PostXmlAsync("SendIncomeClassification", xmlContent);
     }
 
-    public async Task<HttpResponseMessage> SendExpensesClassificationAsync(string xmlContent, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> SendExpensesClassificationAsync(string xmlContent)
     {
-        return await PostXmlAsync("SendExpensesClassification", xmlContent, aadeUserId, subscriptionKey);
+        return await PostXmlAsync("SendExpensesClassification", xmlContent);
     }
 
-    public async Task<HttpResponseMessage> SendPaymentMethodsAsync(string xmlContent, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> SendPaymentMethodsAsync(string xmlContent)
     {
-        return await PostXmlAsync("SendPaymentsMethod", xmlContent, aadeUserId, subscriptionKey);
+        return await PostXmlAsync("SendPaymentsMethod", xmlContent);
     }
 
-    public async Task<HttpResponseMessage> RequestVatInfoAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestVatInfoAsync(string queryString)
     {
-        return await GetAsync($"RequestVatInfo{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestVatInfo{queryString}");
     }
 
-    public async Task<HttpResponseMessage> RequestE3InfoAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestE3InfoAsync(string queryString)
     {
-        return await GetAsync($"RequestE3Info{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestE3Info{queryString}");
     }
 
-    public async Task<HttpResponseMessage> SendStatementAsync(string xmlContent, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> SendStatementAsync(string xmlContent)
     {
-        return await PostXmlAsync("SendStatement", xmlContent, aadeUserId, subscriptionKey);
+        return await PostXmlAsync("SendStatement", xmlContent);
     }
 
-    public async Task<HttpResponseMessage> RequestStatementsAsync(string queryString, string aadeUserId, string subscriptionKey)
+    public async Task<HttpResponseMessage> RequestStatementsAsync(string queryString)
     {
-        return await GetAsync($"RequestStatements{queryString}", aadeUserId, subscriptionKey);
+        return await GetAsync($"RequestStatements{queryString}");
     }
 
-    private async Task<HttpResponseMessage> PostXmlAsync(string endpoint, string xmlContent, string aadeUserId, string subscriptionKey)
+    private async Task<HttpResponseMessage> PostXmlAsync(string endpoint, string xmlContent)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
-        SetAadeHeaders(request, aadeUserId, subscriptionKey);
+        SetAadeHeaders(request);
 
         if (!string.IsNullOrEmpty(xmlContent))
         {
@@ -93,19 +96,19 @@ public class MyDataClient : IMyDataClient
         return await _httpClient.SendAsync(request);
     }
 
-    private async Task<HttpResponseMessage> GetAsync(string endpoint, string aadeUserId, string subscriptionKey)
+    private async Task<HttpResponseMessage> GetAsync(string endpoint)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
-        SetAadeHeaders(request, aadeUserId, subscriptionKey);
+        SetAadeHeaders(request);
 
         _logger.LogInformation("Forwarding GET to myDATA: {Endpoint}", endpoint);
         return await _httpClient.SendAsync(request);
     }
 
-    private static void SetAadeHeaders(HttpRequestMessage request, string aadeUserId, string subscriptionKey)
+    private void SetAadeHeaders(HttpRequestMessage request)
     {
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml"));
-        request.Headers.Add("aade-user-id", aadeUserId);
-        request.Headers.Add("ocp-apim-subscription-key", subscriptionKey);
+        request.Headers.Add("aade-user-id", _settings.AadeUserId);
+        request.Headers.Add("ocp-apim-subscription-key", _settings.SubscriptionKey);
     }
 }

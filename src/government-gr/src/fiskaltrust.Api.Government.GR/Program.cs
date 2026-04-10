@@ -1,12 +1,10 @@
 using Azure.Monitor.OpenTelemetry.Exporter;
 using fiskaltrust.Api.Government.GR;
-using fiskaltrust.Api.Government.GR.Authentication;
 using fiskaltrust.Api.Government.GR.Extensions;
-using fiskaltrust.Api.Government.GR.Interfaces;
 using fiskaltrust.Api.Government.GR.MyData;
-using fiskaltrust.Api.Government.GR.Services;
 using fiskaltrust.Api.Government.GR.Telemetry;
 using Microsoft.Extensions.Options;
+using Microsoft.Identity.Web;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -27,9 +25,6 @@ builder.Services.AddProblemDetails(options =>
         context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
     };
 });
-builder.Services.AddScoped<ICommonContextRepository>(sp => new CommonContextRepository(sp.GetRequiredService<IOptions<AppSettings>>().Value.ConnectionStrings.ReadOnlySQL));
-builder.Services.AddScoped<ICashboxAuthenticationService, CashboxAuthenticationService>();
-builder.Services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
 
 builder.Services.AddHttpClient<IMyDataClient, MyDataClient>((sp, client) =>
 {
@@ -37,10 +32,12 @@ builder.Services.AddHttpClient<IMyDataClient, MyDataClient>((sp, client) =>
     client.BaseAddress = new Uri(settings.BaseUrl);
 });
 
-builder.Services.AddAuthentication(options => options.DefaultScheme = "CashBoxAccessToken")
-    .AddScheme<FiskaltrustAuthenticationSchemeOptions, FiskaltrustAccessTokenAuthenticationSchemeHandler>("CashBoxAccessToken", opts => { });
-
-builder.Services.AddAuthorization();
+builder.Services.AddMicrosoftIdentityWebApiAuthentication(builder.Configuration, "AzureAd");
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("MyDataAccess", policy =>
+        policy.RequireClaim("roles", "MyData.Access"));
+});
 
 const string serviceName = "fiskaltrust.Api.Government.GR";
 builder.Services.AddHttpContextAccessor();
@@ -51,12 +48,6 @@ var otel = builder.Services.AddOpenTelemetry()
             .AddAspNetCoreInstrumentation(options =>
             {
                 options.Filter = context => !(context.Request?.Path.Value.Contains("health") ?? false);
-
-                options.EnrichWithHttpRequest = (activity, httpRequestMessage) =>
-                {
-                    activity.SetTags(httpRequestMessage.ExtractFromHeaders(["cashboxid", "x-cashbox-id"]), ["cashbox.id", "enduser.id", "user.id"]);
-                    activity.SetTags(httpRequestMessage.ExtractFromHeaders(["account", "x-account-id"]), ["account.id", "enduser.id", "user.id"]);
-                };
                 options.RecordException = true;
             })
             .AddHttpClientInstrumentation(options =>
