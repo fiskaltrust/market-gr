@@ -62,11 +62,51 @@ These fields override invoice-level metadata sent to MyData:
 
 | Field Name | Type | Description | MyData Equivalent | Example |
 |---|---|---|---|---|
+| `invoiceType` | string | MyData invoice type (forces specific fiscal classification) | `invoiceType` in MyData | `"1.1"` |
 | `dispatchDate` | string (ISO 8601) | Date when goods were dispatched | `dispatchDate` in MyData | `"2025-06-19"` |
 | `dispatchTime` | string (HH:mm) | Time of dispatch | `dispatchTime` in MyData | `"14:30"` |
 | `thirdPartyCollection` | boolean | Payment collected by third party | `thirdPartyCollection` | `true` |
 | `multipleConnectedMarks` | array[long] | Related invoice marks | `multipleConnectedMarks` | `[123456789, 987654321]` |
 | `deliveryAddress` | object | Where goods are delivered to | Used in delivery notes | See below |
+
+#### Invoice Type Values
+
+MyData supports the following invoice types (set via override):
+
+| Code | Description |
+|---|---|
+| `1.1` | Sales Invoice (standard) |
+| `1.2` | Sales Invoice - Intra-Community |
+| `1.3` | Sales Invoice - Third Country |
+| `1.4` | Sales Invoice - Intra-Community with Foreign VAT |
+| `1.5` | Sales Invoice - Third Country with Foreign VAT |
+| `1.6` | Sales Invoice - Supplementary |
+| `2.1` | Service Invoice |
+| `2.2` | Service Invoice - Intra-Community |
+| `2.3` | Service Invoice - Third Country |
+| `2.4` | Service Invoice - Supplementary |
+| `3.1` | Proof of Expense |
+| `3.2` | Proof of Expense - Intra-Community |
+| `5.1` | Credit Memo - Associated |
+| `5.2` | Credit Memo - Non-Associated |
+| `6.1` | Self-Delivery of Goods |
+| `6.2` | Self-Use of Services |
+| `7.1` | Contract Income |
+| `8.1` | Rent Invoice |
+| `8.2` | Rent Receipt |
+| `8.4` | Rent - Tax-Free Proof |
+| `8.5` | Rent - Third-Party Proof |
+| `11.1` | Retail Sales Receipt |
+| `11.2` | Service Receipt |
+| `11.3` | Simplified Invoice |
+| `11.4` | Retail Credit Note |
+| `11.5` | Retail Receipt - On Behalf of Third Party |
+| `13.1` | Expenses - Retail Purchase |
+| `13.2` | Expenses - Retail Service |
+| `13.3` | Shared Expenses |
+| `13.4` | Subscriptions |
+| `14.1` | Invoice - Intra-Community Acquisitions |
+| `14.2` | Invoice - Third Country Acquisitions |
 
 ### Delivery Address Subfields
 
@@ -92,17 +132,64 @@ When overriding delivery address:
 
 ### Invoice Detail (Line Item) Level Overrides
 
-Override individual charge items within the invoice:
+Override individual charge items within the invoice via `ftChargeItemCaseData`:
 
 | Field Name | Type | Description | Example |
 |---|---|---|---|
-| `lineNumber` | int | Position in the invoice | `1` |
-| `quantity` | decimal | Item quantity (overrides charge item) | `2.5` |
-| `unitMeasurementId` | int | Unit of measure code (MyData standard) | `1` (piece) |
-| `description` | string | Full item description | `"Espresso Coffee - Medium"` |
-| `netValue` | decimal | Net amount before VAT | `3.50` |
-| `vatAmount` | decimal | VAT amount | `0.84` |
-| `vatRate` | decimal | VAT percentage | `24.0` |
+| `invoiceDetails` | object | Container for line item overrides | See below |
+
+#### Line Item Classification Fields (`invoiceDetails`)
+
+| Field Name | Type | Description |
+|---|---|---|
+| `incomeClassification` | array | Income classification override (single entry only) |
+| `expensesClassification` | array | Expenses classification overrides |
+
+#### Income Classification Override
+
+```json
+{
+  "incomeClassification": [
+    {
+      "classificationType": "E3_561_001",
+      "classificationCategory": "category1_4"
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `classificationType` | string | Optional | MyData income classification code (E3 format) |
+| `classificationCategory` | string | Yes | Category like `category1_1`, `category1_4`, etc. |
+
+#### Expenses Classification Override
+
+```json
+{
+  "expensesClassification": [
+    {
+      "classificationType": "E3_102_001",
+      "classificationCategory": "category2_1",
+      "amount": 75.0,
+      "vatAmount": 18.0,
+      "vatCategory": 1,
+      "vatExemptionCategory": 3,
+      "id": 2
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `classificationType` | string | Yes | MyData expenses classification code (E3 format) |
+| `classificationCategory` | string | Yes | Category like `category2_1`, `category2_2`, etc. |
+| `amount` | decimal | No | Specific amount for this categorization (defaults to net value) |
+| `vatAmount` | decimal | No | VAT amount for this categorization |
+| `vatCategory` | int | No | VAT category (1-10) for grouping in summary |
+| `vatExemptionCategory` | int | No | VAT exemption code (1-31) if applicable |
+| `id` | int | No | Optional unique identifier for the classification |
 
 ---
 
@@ -122,7 +209,21 @@ Override individual charge items within the invoice:
       "Quantity": 1,
       "Description": "Service",
       "VATRate": 24,
-      "ftChargeItemCase": 5207048243932160026
+      "ftChargeItemCase": 5207048243932160026,
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "incomeClassification": [
+                {
+                  "classificationType": "E3_561_001",
+                  "classificationCategory": "category1_7"
+                }
+              ]
+            }
+          }
+        }
+      }
     }
   ],
   "cbPayItems": [
@@ -138,6 +239,7 @@ Override individual charge items within the invoice:
       "mydataoverride": {
         "invoice": {
           "invoiceHeader": {
+            "invoiceType": "1.1",
             "dispatchDate": "2025-06-21",
             "dispatchTime": "09:00",
             "thirdPartyCollection": false,
@@ -196,6 +298,207 @@ public static bool TryDeserializeftReceiptCaseData<T>(
 - Property names are **case-insensitive** (both `mydataoverride` and `MyDataOverride` work)
 - Null values are ignored (missing fields don't override)
 - Exceptions during deserialization are silently caught (override is skipped)
+
+---
+
+## Income & Expense Classification Handling
+
+### Overview
+
+Income and expense classifications tell MyData how to categorize invoice line items for tax purposes. They can be:
+1. **Automatically calculated** by the middleware from the receipt type
+2. **Overridden** by providing explicit classification in `ftChargeItemCaseData`
+
+### How Classifications Work
+
+#### Income Classification (`incomeClassification`)
+
+Used when the invoice records **revenue/income**:
+
+- Applies to invoice types `1.1` through `2.4`, `11.x` (retail), etc.
+- Each charge item can have **one income classification**
+- Overriding clears any auto-detected classification
+- Amount is automatically set to the net value of the line item
+
+```json
+{
+  "cbChargeItems": [
+    {
+      "Amount": 100.0,
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "incomeClassification": [
+                {
+                  "classificationType": "E3_561_001",
+                  "classificationCategory": "category1_4"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Supported Income Classification Categories:**
+- `category1_1` – Commodity/Goods Revenue
+- `category1_2` – Product Revenue
+- `category1_3` – Services Revenue
+- `category1_4` – Fixed Asset Sales
+- `category1_5` – Other Income/Profit
+- `category1_6` – Self-Deliveries
+- `category1_7` – Third-Party Sales (important for agency business)
+- `category1_8` – Prior Year Income
+- `category1_9` – Future Year Income
+- `category1_10` – Income Adjustments
+- `category1_95` – Other Income Info
+
+#### Expenses Classification (`expensesClassification`)
+
+Used when the invoice records **expenses/purchases**:
+
+- Applies to invoice types `3.x`, `13.x`, `14.x`, etc.
+- Each charge item can have **multiple expenses classifications**
+- Useful when a single line item needs categorization across different expense types
+- Supports granular VAT tracking per classification
+
+```json
+{
+  "cbChargeItems": [
+    {
+      "Amount": 100.0,
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "expensesClassification": [
+                {
+                  "classificationType": "E3_102_001",
+                  "classificationCategory": "category2_1",
+                  "amount": 60.0,
+                  "vatAmount": 14.4,
+                  "vatCategory": 1
+                },
+                {
+                  "classificationType": "E3_102_002",
+                  "classificationCategory": "category2_2",
+                  "amount": 40.0,
+                  "vatAmount": 9.6,
+                  "vatCategory": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Supported Expenses Classification Categories:**
+- `category2_1` through `category2_9` – Various expense types
+
+### Invoice Type & Classification Relationship
+
+The invoice type determines which classifications are allowed:
+
+| Invoice Type | Classification Type | Notes |
+|---|---|---|
+| `1.1` - `2.4` (Sales/Service) | **Income** | Auto-detected from receipt type |
+| `3.x` (Expenses) | **Expenses** | Allows multiple per line |
+| `5.x` (Credit Memos) | **Income** | Can be positive or negative |
+| `6.x` (Self-Delivery) | **Income** | Special case for internal transfers |
+| `11.x` (Retail) | **Income** | POS receipts auto-classified |
+| `13.x` (Expense Purchases) | **Expenses** | Split across SAC codes |
+| `14.x` (Import/State Purchases) | **Expenses** | EU/Third-country specific |
+
+### Automatic Summarization
+
+The middleware **automatically aggregates** classifications in the invoice summary:
+
+```
+Invoice Summary:
+├── incomeClassification[] → grouped by (category, type)
+└── expensesClassification[] → grouped by (category, type, vatCategory, vatExemptionCategory)
+```
+
+**Example aggregation for expenses:**
+```
+Two line items with same classification:
+  Line 1: amount=60, category=2_1, vatCat=1
+  Line 2: amount=20, category=2_1, vatCat=1
+
+Summary shows:
+  amount=80, category=2_1, vatCat=1  (aggregated)
+```
+
+### Validation Rules
+
+| Rule | Condition | Action |
+|---|---|---|
+| **Incompatible Classification** | Income override on expense invoice type | Error returned |
+| **Expense override on income type** | Expense override on `1.x` invoice type | Error returned |
+| **Invalid E3 Code** | Classification type doesn't exist in MyData | Error returned |
+| **Invalid Category** | Classification category doesn't exist | Error returned |
+| **Multiple Income Classifications** | More than one income classification per line | Error returned |
+| **Amount Exceeds Line Net** | Expense amount > line item net value | Warning logged, used as-is |
+| **Missing Category** | Classification provided without category | Error returned |
+
+### Real-World Example: Magazine Expense Split
+
+Split a €100 magazine purchase across two expense categories:
+
+```json
+{
+  "ftReceiptCaseData": {
+    "GR": {
+      "mydataoverride": {
+        "invoice": {
+          "invoiceHeader": {
+            "invoiceType": "1.1"
+          }
+        }
+      }
+    }
+  },
+  "cbChargeItems": [
+    {
+      "Amount": 100.0,
+      "VATRate": 24,
+      "Description": "Magazine Subscriptions",
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "expensesClassification": [
+                {
+                  "classificationType": "E3_205_001",
+                  "classificationCategory": "category2_5",
+                  "amount": 60.0,
+                  "vatCategory": 1
+                },
+                {
+                  "classificationType": "E3_205_002",
+                  "classificationCategory": "category2_5",
+                  "amount": 40.0,
+                  "vatCategory": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+---
 
 ---
 
@@ -315,7 +618,154 @@ Reference related invoice marks (e.g., linked orders):
 
 ---
 
-### Example 5: Restaurant Delivery Order (Complete Scenario)
+### Example 5: Charge Item with Income Classification Override
+
+Override the income classification for a specific line item:
+
+```json
+{
+  "cbChargeItems": [
+    {
+      "Amount": 500.0,
+      "Quantity": 1,
+      "Description": "Consulting Services",
+      "VATRate": 24,
+      "ftChargeItemCase": 5207048243932160026,
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "incomeClassification": [
+                {
+                  "classificationType": "E3_561_001",
+                  "classificationCategory": "category1_4"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "ftReceiptCaseData": {
+    "GR": {
+      "mydataoverride": {
+        "invoice": {
+          "invoiceHeader": {
+            "invoiceType": "2.1"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- Invoice type forced to `2.1` (Service Invoice)
+- Line item classified as `category1_4` (Fixed Asset Sales)
+- Middleware skips auto-classification and uses override values
+
+---
+
+### Example 6: Split Expense Line (Multiple Classifications)
+
+Single line item split across multiple expense categories:
+
+```json
+{
+  "cbChargeItems": [
+    {
+      "Amount": 150.0,
+      "VATRate": 24,
+      "Description": "Office Supplies & Services",
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "expensesClassification": [
+                {
+                  "classificationType": "E3_102_001",
+                  "classificationCategory": "category2_1",
+                  "amount": 90.0,
+                  "vatAmount": 21.6,
+                  "vatCategory": 1
+                },
+                {
+                  "classificationType": "E3_205_001",
+                  "classificationCategory": "category2_5",
+                  "amount": 60.0,
+                  "vatAmount": 14.4,
+                  "vatCategory": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Result:**
+- €150 purchase split: €90 (category2_1) + €60 (category2_5)
+- Each gets own VAT tracking (21.6 + 14.4 = 36 total VAT)
+- MyData summary aggregates both classifications
+
+---
+
+### Example 7: Invoice Type Override for Third-Party Sale
+
+Mark invoice as third-party sale (agency/commission):
+
+```json
+{
+  "cbChargeItems": [
+    {
+      "Amount": 1000.0,
+      "Quantity": 1,
+      "Description": "Electronics (sold on behalf of customer)",
+      "VATRate": 24,
+      "ftChargeItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "invoiceDetails": {
+              "incomeClassification": [
+                {
+                  "classificationType": "E3_561_001",
+                  "classificationCategory": "category1_7"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "ftReceiptCaseData": {
+    "GR": {
+      "mydataoverride": {
+        "invoice": {
+          "invoiceHeader": {
+            "invoiceType": "1.4",
+            "thirdPartyCollection": true
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Result:**
+- Invoice type `1.4` (Intra-Community with Foreign VAT - for agency)
+- Line classified as `category1_7` (Third-party sales)
+- `thirdPartyCollection=true` indicates payment collected by intermediary
+
+---
+
+### Example 8: Restaurant Delivery Order (Complete Scenario)
 
 Real-world example: restaurant delivery with custom address and timing:
 
