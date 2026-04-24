@@ -24,7 +24,9 @@ This guide explains **what**, **why**, and **how** to use MyData field overrides
 
 ### Where Overrides Live
 
-MyData field overrides are embedded within the `ftReceiptCaseData` field of the `ReceiptRequest`:
+MyData field overrides can be embedded at **three different levels** in the ReceiptRequest:
+
+#### 1. Receipt Level (`ftReceiptCaseData`)
 
 ```
 ReceiptRequest
@@ -33,7 +35,7 @@ ReceiptRequest
 ├── cbCustomer
 └── ftReceiptCaseData (JSON object)
     └── GR (Greece-specific data)
-        └── mydataoverride (THE OVERRIDE CONTAINER)
+        └── mydataoverride (RECEIPT-LEVEL OVERRIDE CONTAINER)
             ├── invoice
             │   ├── invoiceHeader
             │   │   ├── dispatchDate
@@ -44,13 +46,50 @@ ReceiptRequest
             └── (future expansions)
 ```
 
-### How it Works (Deserialization Flow)
+#### 2. Charge Item Level (`ftChargeItemCaseData`)
 
-1. **POS/Integration System** → Creates `ReceiptRequest` JSON with nested override data in `ftReceiptCaseData.GR.mydataoverride`
-2. **Middleware Queue** → Receives the request and validates structure
-3. **Deserialization Helper** → Extracts the override data from the generic JSON object
-4. **MyDataSCU Processor** → Applies overrides before building the MyData XML payload
-5. **MyData API** → Receives the final invoice with overridden values
+Each charge item in `cbChargeItems[]` can have its own override:
+
+```
+cbChargeItems[]
+└── []
+    ├── Amount: 100.0
+    ├── Description: "Product"
+    ├── ftChargeItemCase: 5207048243932160026
+    └── ftChargeItemCaseData (JSON object)
+        └── GR (Greece-specific data)
+            └── mydataoverride (CHARGE-ITEM-LEVEL OVERRIDE)
+                └── invoiceDetails
+                    ├── incomeClassification[]
+                    └── expensesClassification[]
+```
+
+#### 3. Payment Item Level (`ftPayItemCaseData`)
+
+Each payment item in `cbPayItems[]` can have its own override:
+
+```
+cbPayItems[]
+└── []
+    ├── Amount: 124.0
+    ├── Description: "Cash Payment"
+    ├── ftPayItemCase: 5207048243932160001
+    └── ftPayItemCaseData (JSON object)
+        └── GR (Greece-specific data)
+            └── mydataoverride (PAYMENT-ITEM-LEVEL OVERRIDE)
+                └── paymentMethodDetails
+                    └── (payment classification overrides)
+```
+
+### Override Priority
+
+When overrides exist at multiple levels, they are applied in this order:
+
+1. **Payment Item Overrides** (`ftPayItemCaseData`) - Most specific
+2. **Charge Item Overrides** (`ftChargeItemCaseData`) - Line item specific
+3. **Receipt Level Overrides** (`ftReceiptCaseData`) - Invoice-level defaults
+
+The more specific override takes precedence.
 
 ---
 
@@ -247,6 +286,101 @@ Override individual charge items within the invoice via `ftChargeItemCaseData`:
 | `vatCategory` | int | No | VAT category (1-10) for grouping in summary |
 | `vatExemptionCategory` | int | No | VAT exemption code (1-31) if applicable |
 | `id` | int | No | Optional unique identifier for the classification |
+
+### Payment Item Level Overrides
+
+Override individual payment items within the invoice via `ftPayItemCaseData`:
+
+```json
+{
+  "cbPayItems": [
+    {
+      "Amount": 124.0,
+      "Description": "Cash Payment",
+      "ftPayItemCase": 5207048243932160001,
+      "ftPayItemCaseData": {
+        "GR": {
+          "mydataoverride": {
+            "paymentMethodDetails": {
+              "paymentMethodType": 3,
+              "paymentMethodInfo": "POS Terminal ID: 12345"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Payment Method Detail Fields
+
+| Field Name | Type | Description | Example |
+|---|---|---|---|
+| `paymentMethodType` | int | Payment method type (1-8) | `3` |
+| `paymentMethodInfo` | string | Additional payment info | `"POS Terminal ID: 12345"` |
+| `tipAmount` | decimal | Tip amount (for card payments) | `5.00` |
+| `transactionId` | string | Transaction reference | `"TXN-2025-001"` |
+| `tid` | string | Terminal ID | `"TERM-001"` |
+
+#### ftPayItemCase Values (Payment Type Codes)
+
+The `ftPayItemCase` field determines the payment type. The following values are supported for MyData integration:
+
+| ftPayItemCase | Description | MyData Code | Notes |
+|---|---|---|---|
+| `5207048243932160001` | Cash Payment | 3 | Standard cash |
+| `5207048243932160002` | Cheque | 4 | Cheque payment |
+| `5207048243932160003` | Credit Card | 5 | Credit card |
+| `5207048243932160004` | Debit Card | 4 | Debit card (maps to 4 in MyData) |
+| `5207048243932160005` | Voucher (Coupon) | 6 | Gift voucher/value voucher |
+| `5207048243932160006` | Web Banking | 6 | Online payment |
+| `5207048243932160007` | Loyalty Card | 8 | Customer loyalty program |
+| `5207048243932160008` | Accounts Receivable | 5 | On credit/postpaid |
+| `5207048243932160009` | IRIS Payment | 8 | IRIS system payment |
+| `5207048243932160010` | Bank Transfer Domestic | 1 | Domestic wire transfer |
+| `5207048243932160011` | Bank Transfer International | 2 | International wire |
+| `5207048243932160012` | Crypto Currency | 6 | Cryptocurrency payment |
+| `5207048243932160013` | Contactless Payment | 4 | NFC/Contactless |
+| `5207048243932160014` | Mobile Payment | 6 | Apple Pay/Google Pay |
+| `5207048243932160015` | Split Payment | 4+5 | Multiple payment methods |
+| `5207048243932160016` | Installment Payment | 5 | Payment in installments |
+| `5207048243932160017` | Prepaid Card | 6 | Prepaid card payment |
+| `5207048243932160018` | Food Voucher | 6 | Meal/food voucher |
+| `5207048243932160019` | Fuel Voucher | 6 | Fuel card |
+| `5207048243932160020` | Corporate Card | 5 | Business credit card |
+
+> **Note:** The MyData column shows the corresponding payment method code (1-8) that will be sent to the Greek tax authority. Some ftPayItemCase values map to the same MyData code.
+
+#### Payment Item Override JSON Structure
+
+```json
+{
+  "ftPayItemCaseData": {
+    "GR": {
+      "mydataoverride": {
+        "paymentMethodDetails": {
+          "paymentMethodType": 3,
+          "paymentMethodInfo": "Additional payment information",
+          "tipAmount": 0.00,
+          "transactionId": "optional-transaction-id",
+          "tid": "terminal-id"
+        }
+      }
+    }
+  }
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `paymentMethodType` | int | Yes | MyData payment method (1-8) |
+| `paymentMethodInfo` | string | No | Free-form text for additional info |
+| `tipAmount` | decimal | No | Tip amount (typically for card payments) |
+| `transactionId` | string | No | External transaction reference |
+| `tid` | string | No | Terminal/device identifier |
 
 ---
 
