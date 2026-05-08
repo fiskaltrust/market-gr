@@ -1,0 +1,37 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: government-gr-ingress-route-https
+  annotations:
+    kubernetes.io/ingress.class: traefik-internal
+spec:
+  entryPoints:
+    - websecure
+  tls: {}
+  routes:
+  - kind: Rule
+    match: Host(`government-sandbox.fiskaltrust.gr`)
+    services:
+    - kind: Service
+      name: government-gr-service
+      port: 80
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: government-gr-ingress-route-http
+  annotations:
+    kubernetes.io/ingress.class: traefik-internal
+spec:
+  entryPoints:
+    - web
+  routes:
+  - kind: Rule
+    middlewares:
+    - name: gateway-https-middleware
+    match: Host(`government-sandbox.fiskaltrust.gr`)
+    services:
+    - kind: Service
+      name: government-gr-service
+      port: 80
+---
