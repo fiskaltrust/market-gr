@@ -85,16 +85,6 @@ Set on `ReceiptRequest.ftReceiptCaseData`:
 | `totalCancelDeliveryOrders` | bool | |
 | `reverseDeliveryNote` | bool | |
 | `reverseDeliveryNotePurpose` | int | **Required** when `invoiceType=9.3` and `reverseDeliveryNote=true`. |
-| `series` | string | Defaults to the cashbox identifier. |
-| `aa` | string | Defaults to the receipt identifier. |
-| `issueDate` | string (ISO 8601 date) | Defaults to the receipt moment in Athens local time. |
-| `currency` | string | Currency code (`EUR`, `USD`, ...). Defaults to `EUR`. Invalid values are rejected. |
-| `correlatedInvoices` | long[] | |
-| `multipleConnectedMarks` | long[] | |
-| `isDeliveryNote` | bool | Auto-set when transport information is present on the receipt; override forces a value. |
-| `tableAA` | string | Not produced by default. |
-
-> **Caveat:** For refund flows that reference a previous receipt, `correlatedInvoices` and `multipleConnectedMarks` may be re-assigned after the override based on that previous receipt's marks. For non-refund flows the override is preserved.
 
 ### Delivery note header
 
@@ -216,16 +206,12 @@ Set on each `ChargeItem.ftChargeItemCaseData`:
 | `otherMeasurementUnitQuantity` | int | |
 | `otherMeasurementUnitTitle` | string | |
 
-### Amounts and VAT
+### VAT classification
 
 | Field | Type | Notes |
 |---|---|---|
-| `netValue` | decimal | Otherwise calculated from `chargeItem.Amount` and VAT. |
 | `vatCategory` | int | |
-| `vatAmount` | decimal | Otherwise calculated. |
 | `vatExemptionCategory` | int | |
-
-> **Caveat:** Overriding `netValue` / `vatAmount` does **not** trigger recomputation of the invoice summary totals — the totals reflect whatever values you push in. Keep your gross/payment math consistent.
 
 ### Special-tax fields
 
@@ -329,7 +315,6 @@ The middleware does **not** silently swallow malformed overrides. When validatio
 | Scenario | Behavior |
 |---|---|
 | Unknown `invoiceType` | Rejected; error lists allowed values. |
-| Unknown `currency` | Rejected; error lists allowed values. |
 | Unknown `classificationType` (income or expenses) | Rejected; error lists allowed values. |
 | Unknown `classificationCategory` (income or expenses) | Rejected; error lists allowed values. |
 | Unknown `countryDocumentId` on a party override | Silently ignored. |
@@ -362,7 +347,7 @@ The takeaway: **unknown properties don't break anything**, but invalid values fo
 }
 ```
 
-### Force invoice type and override series/aa
+### Force the invoice type
 
 ```json
 {
@@ -371,9 +356,7 @@ The takeaway: **unknown properties don't break anything**, but invalid values fo
       "mydataoverride": {
         "invoice": {
           "invoiceHeader": {
-            "invoiceType": "1.1",
-            "series": "OVR-A",
-            "aa": "999"
+            "invoiceType": "1.1"
           }
         }
       }
@@ -515,27 +498,6 @@ The takeaway: **unknown properties don't break anything**, but invalid values fo
   }
 }
 ```
-
-### Refund with explicit related marks
-
-```json
-{
-  "ftReceiptCaseData": {
-    "GR": {
-      "mydataoverride": {
-        "invoice": {
-          "invoiceHeader": {
-            "correlatedInvoices": [12345, 67890],
-            "multipleConnectedMarks": [999111222333]
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-> Reminder: when a refund references a previous receipt, the middleware may re-assign these arrays from the previous receipt's marks after the override is applied.
 
 ---
 
