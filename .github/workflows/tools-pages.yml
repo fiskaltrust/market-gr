@@ -1,0 +1,100 @@
+name: market-gr tools (Pages build)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/MyDataConverter.Core/**"
+      - "src/MyDataConverter.Wasm/**"
+      - "src/market-gr-tools/**"
+      - ".github/workflows/tools-pages.yml"
+      - "global.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/MyDataConverter.Core/**"
+      - "src/MyDataConverter.Wasm/**"
+      - "src/market-gr-tools/**"
+      - ".github/workflows/tools-pages.yml"
+      - "global.json"
+  workflow_dispatch:
+
+# The page is published to https://fiskaltrust.github.io/market-gr/tools/.
+# Pages itself is not enabled yet in repo settings — this workflow only
+# builds and uploads the artifact so the deploy job can be turned on later
+# without further changes.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: tools-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Pages artifact
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install wasm-tools workload
+        run: dotnet workload install wasm-tools
+
+      - name: Publish MyDataConverter.Wasm
+        run: dotnet publish src/MyDataConverter.Wasm/MyDataConverter.Wasm.csproj -c Release -o artifacts/wasm
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/market-gr-tools/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: src/market-gr-tools
+        run: npm ci
+
+      - name: Copy WASM AppBundle into public/
+        working-directory: src/market-gr-tools
+        env:
+          WASM_APPBUNDLE: ${{ github.workspace }}/artifacts/wasm/wwwroot/_framework/../../wwwroot
+        run: |
+          # `dotnet publish` of a Microsoft.NET.Sdk.WebAssembly project lays the
+          # AppBundle under wwwroot/. Point copy-wasm.mjs at that directory.
+          WASM_APPBUNDLE="$GITHUB_WORKSPACE/artifacts/wasm/wwwroot" npm run wasm:copy
+
+      - name: Build React app
+        working-directory: src/market-gr-tools
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: src/market-gr-tools/dist
+
+  # To enable deployment to GitHub Pages, uncomment the job below AND enable
+  # Pages in repo settings with source set to "GitHub Actions".
+  #
+  # deploy:
+  #   name: Deploy to GitHub Pages
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - name: Deploy
+  #       id: deployment
+  #       uses: actions/deploy-pages@v4
