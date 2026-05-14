@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import DiffBlock from '../../components/DiffBlock';
 import { normalizeXml } from './xmlDiff';
+
+const STORAGE_KEY = 'mydata-tool/diff-side-by-side';
 
 interface Props {
   /** Raw pasted XML (will be normalized for display) */
@@ -9,6 +12,23 @@ interface Props {
 }
 
 export function DiffView({ original, generated }: Props) {
+  const [sideBySide, setSideBySide] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setMode = (next: boolean) => {
+    setSideBySide(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, String(next));
+    } catch {
+      // private mode — ignore
+    }
+  };
+
   const normalizedOriginal = normalizeXml(original);
   const normalizedGenerated = normalizeXml(generated);
 
@@ -25,19 +45,84 @@ export function DiffView({ original, generated }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--fg-muted)' }}>
-        <span style={{ color: '#2ea043', marginRight: 12 }}>+{added} added</span>
-        <span style={{ color: '#d33b3b' }}>−{removed} removed</span>
-        {' '}lines (after XML normalization)
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 12px',
+          borderBottom: '1px solid var(--border)',
+          fontSize: 12,
+          color: 'var(--fg-muted)',
+        }}
+      >
+        <span>
+          <span style={{ color: '#2ea043', marginRight: 12 }}>+{added} added</span>
+          <span style={{ color: '#d33b3b' }}>−{removed} removed</span>
+          {' '}lines (after XML normalization)
+        </span>
+        <ViewToggle sideBySide={sideBySide} onChange={setMode} />
       </div>
       <DiffBlock
         original={normalizedOriginal}
         modified={normalizedGenerated}
         language="xml"
-        renderSideBySide={false}
+        renderSideBySide={sideBySide}
         minHeight={360}
       />
     </div>
+  );
+}
+
+function ViewToggle({ sideBySide, onChange }: { sideBySide: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Diff layout"
+      style={{
+        display: 'inline-flex',
+        border: '1px solid var(--border)',
+        borderRadius: 6,
+        overflow: 'hidden',
+      }}
+    >
+      <ToggleButton active={!sideBySide} onClick={() => onChange(false)}>
+        Unified
+      </ToggleButton>
+      <ToggleButton active={sideBySide} onClick={() => onChange(true)}>
+        Side-by-side
+      </ToggleButton>
+    </div>
+  );
+}
+
+function ToggleButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      style={{
+        background: active ? 'var(--accent)' : 'transparent',
+        color: active ? 'var(--accent-fg)' : 'var(--fg-muted)',
+        border: 0,
+        padding: '4px 10px',
+        fontSize: 12,
+        fontFamily: 'inherit',
+        cursor: active ? 'default' : 'pointer',
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
