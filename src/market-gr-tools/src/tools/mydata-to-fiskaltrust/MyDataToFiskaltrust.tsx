@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { loadConverter, type ConverterApi, type ValidationIssue } from './wasmLoader';
 import { DiffView } from './DiffView';
+import { DiffSummaryPanel } from './DiffSummaryPanel';
+import { type DiffSummary, summarizeXmlDiff } from './diffSummary';
 import {
   type MiddlewareResponse,
   extractMyDataXmlFromSignResponse,
@@ -18,6 +20,13 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <invoiceType>11.1</invoiceType>
       <currency>EUR</currency>
     </invoiceHeader>
+    <paymentMethods>
+      <paymentMethodDetails>
+        <type>3</type>
+        <amount>124.00</amount>
+        <paymentMethodInfo>Cash</paymentMethodInfo>
+      </paymentMethodDetails>
+    </paymentMethods>
     <invoiceDetails>
       <lineNumber>1</lineNumber>
       <itemDescr>Sample item</itemDescr>
@@ -26,13 +35,6 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <vatCategory>1</vatCategory>
       <vatAmount>24.00</vatAmount>
     </invoiceDetails>
-    <paymentMethods>
-      <paymentMethodDetails>
-        <type>3</type>
-        <amount>124.00</amount>
-        <paymentMethodInfo>Cash</paymentMethodInfo>
-      </paymentMethodDetails>
-    </paymentMethods>
     <invoiceSummary>
       <totalNetValue>100.00</totalNetValue>
       <totalVatAmount>24.00</totalVatAmount>
@@ -57,6 +59,7 @@ interface ValidationState {
   signResponse?: MiddlewareResponse;
   signError?: string;
   generatedXml?: string;
+  summary?: DiffSummary;
 }
 
 export default function MyDataToFiskaltrust() {
@@ -86,10 +89,11 @@ export default function MyDataToFiskaltrust() {
     };
   }, []);
 
-  const runConvert = () => {
+  const runConvert = async () => {
     if (converter.kind !== 'ready') return;
     setErrorText(null);
     setValidation({ busy: false });
+
     try {
       setXsdIssues(converter.api.validate(xml));
     } catch (err: unknown) {
@@ -98,32 +102,29 @@ export default function MyDataToFiskaltrust() {
         { severity: 'error', line: 0, column: 0, message: err instanceof Error ? err.message : String(err) },
       ]);
     }
+
+    let json: string;
     try {
-      const json = converter.api.convert(xml);
+      json = converter.api.convert(xml);
       setOutput(json);
     } catch (err: unknown) {
       setErrorText(err instanceof Error ? err.message : String(err));
       setOutput('');
+      return;
     }
-  };
 
-  const copyOutput = async () => {
-    if (!output) return;
-    await navigator.clipboard.writeText(output);
-  };
-
-  const sendToMiddleware = async () => {
-    if (!output) return;
     setValidation({ busy: true });
     try {
-      const signResponse = await signReceipt(output);
+      const signResponse = await signReceipt(json);
       const generatedXml = signResponse.ok
         ? extractMyDataXmlFromSignResponse(signResponse.body)
         : null;
+      const summary = generatedXml ? summarizeXmlDiff(xml, generatedXml) : undefined;
       setValidation({
         busy: false,
         signResponse,
         generatedXml: generatedXml ?? undefined,
+        summary,
       });
     } catch (err: unknown) {
       setValidation({
@@ -133,13 +134,18 @@ export default function MyDataToFiskaltrust() {
     }
   };
 
+  const copyOutput = async () => {
+    if (!output) return;
+    await navigator.clipboard.writeText(output);
+  };
+
   const jsonViewBody = errorText ? `// Error\n${errorText}` : output;
 
   return (
     <>
       <div className="toolbar">
-        <button className="btn" onClick={runConvert} disabled={converter.kind !== 'ready'}>
-          Convert
+        <button className="btn" onClick={runConvert} disabled={converter.kind !== 'ready' || validation.busy}>
+          {validation.busy ? 'Working…' : 'Convert & validate'}
         </button>
         <button className="btn btn-secondary" onClick={() => setXml(SAMPLE_XML)}>
           Load sample
@@ -152,7 +158,7 @@ export default function MyDataToFiskaltrust() {
         </button>
         <span className="status" style={{ marginLeft: 'auto' }}>
           {converter.kind === 'loading' && 'Loading .NET runtime…'}
-          {converter.kind === 'ready' && 'Ready'}
+          {converter.kind === 'ready' && !validation.busy && 'Ready'}
           {converter.kind === 'error' && (
             <span className="status error">Runtime failed: {converter.message}</span>
           )}
@@ -193,36 +199,27 @@ export default function MyDataToFiskaltrust() {
       {xsdIssues && <XsdIssuesPanel issues={xsdIssues} />}
 
       <section style={{ marginTop: 24 }}>
-        <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Validate against the Greek Middleware</h3>
+        <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Middleware round-trip</h3>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', margin: '0 0 12px' }}>
-          Sends the converted ReceiptRequest to the shared GR sandbox cashbox via <code>/sign</code>.
-          The middleware attaches the generated AADE InvoicesDoc as a <code>mydata-xml</code>
-          signature on the response — we pull it from there and diff against the XML you pasted.
+          <em>Convert &amp; validate</em> also posts the generated ReceiptRequest to the shared GR
+          sandbox via <code>/sign</code>. The middleware re-emits an AADE <code>InvoicesDoc</code>
+          as a <code>mydata-xml</code> signature on the response — the summary below tells you
+          which elements were added, removed, or changed compared to what you pasted.
         </p>
-
-        <div className="toolbar">
-          <button
-            className="btn"
-            onClick={sendToMiddleware}
-            disabled={!output || validation.busy}
-            title={!output ? 'Run Convert first' : ''}
-          >
-            Send to Middleware
-          </button>
-          {validation.busy && <span className="status">Working…</span>}
-        </div>
 
         {validation.signError && (
           <p className="status error" style={{ marginTop: 12 }}>Sign request failed: {validation.signError}</p>
         )}
         {validation.signResponse && (
-          <ResponseBlock title={`/sign response — HTTP ${validation.signResponse.status} (${validation.signResponse.durationMs}ms)`} response={validation.signResponse} />
+          <ResponseBlock title={`/sign response — HTTP ${validation.signResponse.status} (${validation.signResponse.durationMs}ms)`} response={validation.signResponse} collapsedByDefault />
         )}
+
+        {validation.summary && <DiffSummaryPanel summary={validation.summary} />}
 
         {validation.generatedXml && (
           <div style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
-              Diff: pasted XML vs middleware-generated XML (from <code>ftSignatures[Caption=mydata-xml]</code>)
+              Full diff: pasted XML vs middleware-generated XML (from <code>ftSignatures[Caption=mydata-xml]</code>)
             </div>
             <DiffView original={xml} generated={validation.generatedXml} />
           </div>

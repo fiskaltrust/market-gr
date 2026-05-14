@@ -8,6 +8,18 @@ Versions use the `yyyy.MM.no` scheme (e.g. `2026.05.1`, `2026.05.2`).
 
 ## [Unreleased]
 
+### Changed
+- "Convert" now also posts to the middleware and surfaces the diff in one step
+  — no more two-button dance. The single action validates the XSD, converts
+  locally, calls `/sign`, and renders both a categorized differences summary
+  ("only in pasted", "added by middleware", "values changed") plus the full
+  Monaco diff against the returned `mydata-xml` signature.
+
+### Fixed
+- "Load sample" template emitted `paymentMethods` after `invoiceDetails`, which
+  violates the AADE schema sequence. Reordered to
+  `invoiceHeader → paymentMethods → invoiceDetails → invoiceSummary`.
+
 ## [2026.05.1] - 2026-05-14
 
 ### Added
