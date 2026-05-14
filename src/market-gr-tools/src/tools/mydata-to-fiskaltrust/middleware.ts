@@ -3,54 +3,18 @@
  * converted ReceiptRequest to the Greek Middleware sandbox and fetching the
  * generated AADE myDATA payload back via the journal endpoint.
  *
- * Auth pattern lifted from the developer-platform playground (RequestPanel).
+ * Auth values come from the developer-platform playground's
+ * SANDBOX_CREDENTIALS.GR — the same shared sandbox cashbox the playground
+ * uses, so behaviour matches what's seen there.
  */
 
-const STORAGE_KEY = 'mydata-tool/credentials';
-
-export const DEFAULT_SANDBOX_URL = 'https://possystem-api-sandbox.fiskaltrust.eu/v2';
+const SANDBOX_BASE_URL = 'https://possystem-api-sandbox.fiskaltrust.eu/v2';
+const SANDBOX_CASHBOX_ID = '31f3defc-275d-4b6e-9f3f-fa09d64c1bb4';
+const SANDBOX_ACCESS_TOKEN =
+  'BKNrSN7D0zCB8K3ymJNgw2LP/jxSroQqHgG6uYdbKC9ohgli0BeK/Ff6nebU9Av0tdjsuhuerk7E9PRF0G93e48=';
 
 // Greek AADE journal export — see journal-types.ts in service-developer-platform.
 export const AADE_JOURNAL_TYPE = '0x4752200000000001';
-
-export interface MiddlewareCredentials {
-  baseUrl: string;
-  cashboxId: string;
-  accessToken: string;
-  posSystemId: string;
-}
-
-export const emptyCredentials: MiddlewareCredentials = {
-  baseUrl: DEFAULT_SANDBOX_URL,
-  cashboxId: '',
-  accessToken: '',
-  posSystemId: '00000000-0000-0000-0000-000000000000',
-};
-
-export function loadCredentials(): MiddlewareCredentials {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyCredentials;
-    const parsed = JSON.parse(raw) as Partial<MiddlewareCredentials>;
-    return { ...emptyCredentials, ...parsed };
-  } catch {
-    return emptyCredentials;
-  }
-}
-
-export function saveCredentials(creds: MiddlewareCredentials): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
-}
-
-export function credentialsAreComplete(creds: MiddlewareCredentials): boolean {
-  return Boolean(creds.baseUrl && creds.cashboxId && creds.accessToken);
-}
-
-interface RequestArgs {
-  creds: MiddlewareCredentials;
-  path: string;
-  body: unknown;
-}
 
 export interface MiddlewareResponse {
   status: number;
@@ -60,14 +24,13 @@ export interface MiddlewareResponse {
   durationMs: number;
 }
 
-async function postJson({ creds, path, body }: RequestArgs): Promise<MiddlewareResponse> {
-  const url = `${creds.baseUrl.replace(/\/$/, '')}${path}`;
+async function postJson(path: string, body: unknown): Promise<MiddlewareResponse> {
+  const url = `${SANDBOX_BASE_URL}${path}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-cashbox-id': creds.cashboxId,
-    'x-cashbox-accesstoken': creds.accessToken,
+    'x-cashbox-id': SANDBOX_CASHBOX_ID,
+    'x-cashbox-accesstoken': SANDBOX_ACCESS_TOKEN,
     'x-operation-id': crypto.randomUUID(),
-    'x-possystem-id': creds.posSystemId || '00000000-0000-0000-0000-000000000000',
   };
 
   const start = performance.now();
@@ -88,17 +51,13 @@ async function postJson({ creds, path, body }: RequestArgs): Promise<MiddlewareR
 }
 
 /** POST /sign — fiscalize the ReceiptRequest. */
-export function signReceipt(creds: MiddlewareCredentials, receiptJson: string): Promise<MiddlewareResponse> {
-  return postJson({ creds, path: '/sign', body: receiptJson });
+export function signReceipt(receiptJson: string): Promise<MiddlewareResponse> {
+  return postJson('/sign', receiptJson);
 }
 
 /** POST /journal — fetch the AADE myDATA export for the queue. */
-export function fetchAadeJournal(creds: MiddlewareCredentials): Promise<MiddlewareResponse> {
-  return postJson({
-    creds,
-    path: '/journal',
-    body: { ftJournalType: AADE_JOURNAL_TYPE },
-  });
+export function fetchAadeJournal(): Promise<MiddlewareResponse> {
+  return postJson('/journal', { ftJournalType: AADE_JOURNAL_TYPE });
 }
 
 /**
@@ -119,7 +78,6 @@ export function extractInvoicesDocXml(rawBody: string): string | null {
     for (const c of candidates) {
       if (typeof c !== 'string') continue;
       if (c.trimStart().startsWith('<')) return c;
-      // Try base64 decode
       try {
         const decoded = atob(c);
         if (decoded.trimStart().startsWith('<')) return decoded;

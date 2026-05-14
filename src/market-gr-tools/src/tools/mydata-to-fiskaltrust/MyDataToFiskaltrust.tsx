@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react';
 import { loadConverter } from './wasmLoader';
-import { CredentialsPanel } from './CredentialsPanel';
 import { DiffView } from './DiffView';
 import {
-  type MiddlewareCredentials,
   type MiddlewareResponse,
-  credentialsAreComplete,
   extractInvoicesDocXml,
   fetchAadeJournal,
-  loadCredentials,
   signReceipt,
 } from './middleware';
 import { type DiffResult, diffXml } from './xmlDiff';
@@ -69,7 +65,6 @@ export default function MyDataToFiskaltrust() {
   const [xml, setXml] = useState(SAMPLE_XML);
   const [output, setOutput] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [creds, setCreds] = useState<MiddlewareCredentials>(loadCredentials);
   const [validation, setValidation] = useState<ValidationState>({ busy: false });
 
   useEffect(() => {
@@ -110,10 +105,10 @@ export default function MyDataToFiskaltrust() {
   };
 
   const sendToMiddleware = async () => {
-    if (!output || !credentialsAreComplete(creds)) return;
+    if (!output) return;
     setValidation({ busy: true });
     try {
-      const signResponse = await signReceipt(creds, output);
+      const signResponse = await signReceipt(output);
       setValidation({ busy: false, signResponse });
     } catch (err: unknown) {
       setValidation({
@@ -126,7 +121,7 @@ export default function MyDataToFiskaltrust() {
   const fetchAndDiff = async () => {
     setValidation((v) => ({ ...v, busy: true, journalError: undefined }));
     try {
-      const journalResponse = await fetchAadeJournal(creds);
+      const journalResponse = await fetchAadeJournal();
       const generatedXml = extractInvoicesDocXml(journalResponse.body);
       const diff = generatedXml ? diffXml(xml, generatedXml) : undefined;
       setValidation((v) => ({
@@ -144,8 +139,6 @@ export default function MyDataToFiskaltrust() {
       }));
     }
   };
-
-  const credsReady = credentialsAreComplete(creds);
 
   return (
     <>
@@ -197,19 +190,17 @@ export default function MyDataToFiskaltrust() {
       <section style={{ marginTop: 24 }}>
         <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Validate against the Greek Middleware</h3>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', margin: '0 0 12px' }}>
-          Send the converted ReceiptRequest to the configured sandbox via <code>/sign</code>,
-          then pull the AADE myDATA payload back via <code>/journal</code> and diff it against
+          Sends the converted ReceiptRequest to the shared GR sandbox cashbox via <code>/sign</code>,
+          then pulls the AADE myDATA payload back via <code>/journal</code> and diffs it against
           the XML you pasted above.
         </p>
-
-        <CredentialsPanel value={creds} onChange={setCreds} />
 
         <div className="toolbar">
           <button
             className="btn"
             onClick={sendToMiddleware}
-            disabled={!output || !credsReady || validation.busy}
-            title={!credsReady ? 'Add credentials above' : !output ? 'Run Convert first' : ''}
+            disabled={!output || validation.busy}
+            title={!output ? 'Run Convert first' : ''}
           >
             Send to Middleware
           </button>
