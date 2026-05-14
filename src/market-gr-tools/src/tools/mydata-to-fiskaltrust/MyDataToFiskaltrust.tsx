@@ -1,5 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadConverter } from './wasmLoader';
+import { CredentialsPanel } from './CredentialsPanel';
+import { DiffView } from './DiffView';
+import {
+  type MiddlewareCredentials,
+  type MiddlewareResponse,
+  credentialsAreComplete,
+  extractInvoicesDocXml,
+  fetchAadeJournal,
+  loadCredentials,
+  signReceipt,
+} from './middleware';
+import { type DiffResult, diffXml } from './xmlDiff';
 
 const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <InvoicesDoc xmlns="http://www.aade.gr/myDATA/invoice/v1.0">
@@ -42,12 +54,23 @@ type ConverterState =
   | { kind: 'ready'; convert: (xml: string) => string }
   | { kind: 'error'; message: string };
 
+interface ValidationState {
+  busy: boolean;
+  signResponse?: MiddlewareResponse;
+  signError?: string;
+  journalResponse?: MiddlewareResponse;
+  journalError?: string;
+  generatedXml?: string;
+  diff?: DiffResult;
+}
+
 export default function MyDataToFiskaltrust() {
   const [converter, setConverter] = useState<ConverterState>({ kind: 'loading' });
   const [xml, setXml] = useState(SAMPLE_XML);
   const [output, setOutput] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
-  const outputRef = useRef<HTMLPreElement | null>(null);
+  const [creds, setCreds] = useState<MiddlewareCredentials>(loadCredentials);
+  const [validation, setValidation] = useState<ValidationState>({ busy: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +94,7 @@ export default function MyDataToFiskaltrust() {
   const runConvert = () => {
     if (converter.kind !== 'ready') return;
     setErrorText(null);
+    setValidation({ busy: false });
     try {
       const json = converter.convert(xml);
       setOutput(json);
@@ -85,6 +109,44 @@ export default function MyDataToFiskaltrust() {
     await navigator.clipboard.writeText(output);
   };
 
+  const sendToMiddleware = async () => {
+    if (!output || !credentialsAreComplete(creds)) return;
+    setValidation({ busy: true });
+    try {
+      const signResponse = await signReceipt(creds, output);
+      setValidation({ busy: false, signResponse });
+    } catch (err: unknown) {
+      setValidation({
+        busy: false,
+        signError: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const fetchAndDiff = async () => {
+    setValidation((v) => ({ ...v, busy: true, journalError: undefined }));
+    try {
+      const journalResponse = await fetchAadeJournal(creds);
+      const generatedXml = extractInvoicesDocXml(journalResponse.body);
+      const diff = generatedXml ? diffXml(xml, generatedXml) : undefined;
+      setValidation((v) => ({
+        ...v,
+        busy: false,
+        journalResponse,
+        generatedXml: generatedXml ?? undefined,
+        diff,
+      }));
+    } catch (err: unknown) {
+      setValidation((v) => ({
+        ...v,
+        busy: false,
+        journalError: err instanceof Error ? err.message : String(err),
+      }));
+    }
+  };
+
+  const credsReady = credentialsAreComplete(creds);
+
   return (
     <>
       <div className="toolbar">
@@ -94,7 +156,7 @@ export default function MyDataToFiskaltrust() {
         <button className="btn btn-secondary" onClick={() => setXml(SAMPLE_XML)}>
           Load sample
         </button>
-        <button className="btn btn-secondary" onClick={() => { setXml(''); setOutput(''); setErrorText(null); }}>
+        <button className="btn btn-secondary" onClick={() => { setXml(''); setOutput(''); setErrorText(null); setValidation({ busy: false }); }}>
           Clear
         </button>
         <button className="btn btn-secondary" onClick={copyOutput} disabled={!output}>
@@ -128,9 +190,93 @@ export default function MyDataToFiskaltrust() {
             <span>fiskaltrust ReceiptRequest JSON</span>
             <span>{output.length.toLocaleString()} chars</span>
           </div>
-          <pre ref={outputRef}>{errorText ? `// Error\n${errorText}` : output || '// click Convert'}</pre>
+          <pre>{errorText ? `// Error\n${errorText}` : output || '// click Convert'}</pre>
         </div>
       </div>
+
+      <section style={{ marginTop: 24 }}>
+        <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Validate against the Greek Middleware</h3>
+        <p style={{ fontSize: 13, color: 'var(--fg-muted)', margin: '0 0 12px' }}>
+          Send the converted ReceiptRequest to the configured sandbox via <code>/sign</code>,
+          then pull the AADE myDATA payload back via <code>/journal</code> and diff it against
+          the XML you pasted above.
+        </p>
+
+        <CredentialsPanel value={creds} onChange={setCreds} />
+
+        <div className="toolbar">
+          <button
+            className="btn"
+            onClick={sendToMiddleware}
+            disabled={!output || !credsReady || validation.busy}
+            title={!credsReady ? 'Add credentials above' : !output ? 'Run Convert first' : ''}
+          >
+            Send to Middleware
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={fetchAndDiff}
+            disabled={!validation.signResponse?.ok || validation.busy}
+            title={!validation.signResponse?.ok ? 'Sign succeeds first' : ''}
+          >
+            Fetch generated mydata &amp; diff
+          </button>
+          {validation.busy && <span className="status">Working…</span>}
+        </div>
+
+        {validation.signError && (
+          <p className="status error" style={{ marginTop: 12 }}>Sign request failed: {validation.signError}</p>
+        )}
+        {validation.signResponse && (
+          <ResponseBlock title={`/sign response — HTTP ${validation.signResponse.status} (${validation.signResponse.durationMs}ms)`} response={validation.signResponse} />
+        )}
+
+        {validation.journalError && (
+          <p className="status error" style={{ marginTop: 12 }}>Journal request failed: {validation.journalError}</p>
+        )}
+        {validation.journalResponse && (
+          <ResponseBlock title={`/journal AADE response — HTTP ${validation.journalResponse.status} (${validation.journalResponse.durationMs}ms)`} response={validation.journalResponse} collapsedByDefault />
+        )}
+
+        {validation.diff && (
+          <div style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
+              Diff: pasted XML vs middleware-generated XML
+            </div>
+            <DiffView diff={validation.diff} />
+          </div>
+        )}
+        {validation.journalResponse && !validation.generatedXml && !validation.journalError && (
+          <p className="status" style={{ marginTop: 12 }}>
+            Couldn't extract an <code>InvoicesDoc</code> from the journal response. Inspect the raw body above.
+          </p>
+        )}
+      </section>
     </>
   );
+}
+
+function ResponseBlock({ title, response, collapsedByDefault }: { title: string; response: MiddlewareResponse; collapsedByDefault?: boolean }) {
+  return (
+    <details open={!collapsedByDefault} style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+      <summary style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
+        {title}
+      </summary>
+      <pre style={{ margin: 0, padding: 12, fontFamily: 'JetBrains Mono, Consolas, monospace', fontSize: 12, lineHeight: 1.45, maxHeight: 360, overflow: 'auto', background: 'var(--code-bg)', color: 'var(--code-fg)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {tryPretty(response.body)}
+      </pre>
+    </details>
+  );
+}
+
+function tryPretty(body: string): string {
+  const trimmed = body.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      return JSON.stringify(JSON.parse(trimmed), null, 2);
+    } catch {
+      // fall through
+    }
+  }
+  return body;
 }
