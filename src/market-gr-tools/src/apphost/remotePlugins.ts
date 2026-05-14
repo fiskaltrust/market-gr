@@ -24,4 +24,5 @@ export const remotePluginSources: readonly RemotePluginSource[] = [
   // Vite build emits index.js + sourcemap into that same folder via
   // scripts/copy-plugin.mjs.
   { manifestUrl: 'plugins/qr-to-mydata/manifest.json' },
+  { manifestUrl: 'plugins/vat-lookup/manifest.json' },
 ];

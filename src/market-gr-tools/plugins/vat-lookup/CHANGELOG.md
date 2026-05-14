@@ -7,6 +7,15 @@ Versions use the `yyyy.MM.no` scheme.
 
 ## [Unreleased]
 
+### Changed
+- Migrated out of the apphost source tree into its own plugin folder
+  (`plugins/vat-lookup/`) with its own Vite library build. The plugin is now
+  loaded at runtime via the remote-ESM loader contract documented in
+  `docs/plugin-architecture.md`.
+- The shared Monaco-backed `CodeBlock` is now injected by the apphost via
+  `deps.components.CodeBlock` rather than imported directly. Monaco no longer
+  ships in this plugin's bundle.
+
 ## [2026.05.1] - 2026-05-14
 
 ### Added

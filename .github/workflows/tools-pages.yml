@@ -102,6 +102,16 @@ jobs:
         working-directory: src/market-gr-tools
         run: node scripts/copy-plugin.mjs qr-to-mydata
 
+      - name: Build vat-lookup plugin
+        working-directory: src/market-gr-tools/plugins/vat-lookup
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage vat-lookup plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs vat-lookup
+
       - name: Build React app
         working-directory: src/market-gr-tools
         env:

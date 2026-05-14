@@ -1,6 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import * as myDataManifest from '../tools/mydata-to-fiskaltrust/manifest';
-import * as vatLookupManifest from '../tools/vat-lookup/manifest';
 
 export interface ToolDefinition {
   id: string;
@@ -22,15 +21,6 @@ export const tools: ToolDefinition[] = [
     component: lazy(() => import('../tools/mydata-to-fiskaltrust/MyDataToFiskaltrust')),
     version: myDataManifest.version,
     changelog: myDataManifest.changelogRaw,
-  },
-  {
-    id: 'vat-lookup',
-    name: 'VAT lookup',
-    description:
-      'Validate the format of a Greek (or any EU) VAT number and look it up against the public VIES service. Runs entirely in the browser — no proxy, no API key — with a graceful fallback to the official VIES web form when CORS blocks the direct fetch.',
-    component: lazy(() => import('../tools/vat-lookup/VatLookup')),
-    version: vatLookupManifest.version,
-    changelog: vatLookupManifest.changelogRaw,
   },
 ];
 
