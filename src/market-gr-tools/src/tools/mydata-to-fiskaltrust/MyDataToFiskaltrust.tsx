@@ -165,6 +165,8 @@ export default function MyDataToFiskaltrust() {
         </span>
       </div>
 
+      <NonMappedFieldsNote />
+
       <div className="converter-grid">
         <div className="editor">
           <div className="editor-header">
@@ -261,6 +263,41 @@ function tryPretty(body: string): string {
     }
   }
   return body;
+}
+
+function NonMappedFieldsNote() {
+  return (
+    <details
+      style={{
+        marginBottom: 12,
+        padding: '8px 12px',
+        border: '1px solid var(--border)',
+        borderLeft: '3px solid #d29922',
+        borderRadius: 6,
+        background: 'var(--bg-elev)',
+        fontSize: 13,
+      }}
+    >
+      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
+        Fields the converter intentionally does <em>not</em> map from your XML
+      </summary>
+      <ul style={{ margin: '8px 0 0', paddingLeft: 20, color: 'var(--fg-muted)', lineHeight: 1.6 }}>
+        <li>
+          <code>cbReceiptMoment</code> — always set to the current UTC time at conversion.
+          The pasted <code>invoiceHeader/issueDate</code> is ignored because the GR middleware
+          re-fiscalises the receipt "now".
+        </li>
+        <li>
+          <code>cbReceiptReference</code> — a fresh UUID per conversion. The pasted
+          <code> series</code> + <code>aa</code> are not propagated.
+        </li>
+        <li>
+          <code>ftReceiptCaseData.GR.Series</code> / <code>AA</code> — not set. The Greek
+          middleware assigns its own series and serial when signing the receipt.
+        </li>
+      </ul>
+    </details>
+  );
 }
 
 function XsdIssuesPanel({ issues }: { issues: ValidationIssue[] }) {

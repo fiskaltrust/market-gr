@@ -63,12 +63,6 @@ public static class InvoiceConverter
             .SelectMany(p => MapPayItem(p, sign))
             .ToList();
 
-        var issueDate = invoice.invoiceHeader.issueDate;
-        if (issueDate.Kind == DateTimeKind.Unspecified)
-        {
-            issueDate = DateTime.SpecifyKind(issueDate, DateTimeKind.Utc);
-        }
-
         var totalGross = invoice.invoiceSummary?.totalGrossValue * sign
                          ?? chargeItems.Sum(c => c.Amount);
 
@@ -81,21 +75,20 @@ public static class InvoiceConverter
             ftReceiptCase = receiptCase,
             cbTerminalID = "1",
             Currency = MapCurrency(invoice.invoiceHeader),
-            cbReceiptMoment = issueDate,
-            cbReceiptReference = BuildReceiptReference(invoice),
+            // The middleware re-fiscalises the receipt "now", so the original
+            // invoiceHeader/issueDate is intentionally not propagated.
+            cbReceiptMoment = DateTime.UtcNow,
+            // series + aa from the input are not propagated either — the GR
+            // middleware assigns its own series/serial when signing. We give
+            // each conversion a fresh local reference so the receipt has *some*
+            // POS-level identifier.
+            cbReceiptReference = Guid.NewGuid().ToString(),
             cbReceiptAmount = totalGross,
             cbChargeItems = chargeItems,
             cbPayItems = payItems,
             cbCustomer = MapCustomer(invoice.counterpart),
             ftReceiptCaseData = BuildReceiptCaseData(invoice),
         };
-    }
-
-    private static string BuildReceiptReference(AadeBookInvoiceType invoice)
-    {
-        var series = invoice.invoiceHeader.series ?? "series";
-        var aa = invoice.invoiceHeader.aa ?? "0";
-        return $"{series}-{aa}";
     }
 
     private static Currency MapCurrency(InvoiceHeaderType header)
@@ -287,8 +280,8 @@ public static class InvoiceConverter
         {
             GR = new
             {
-                Series = invoice.invoiceHeader.series,
-                AA = long.TryParse(invoice.invoiceHeader.aa, out var aaNum) ? aaNum : (long?) null,
+                // Series and AA are intentionally NOT propagated from the input —
+                // the GR middleware assigns its own series/serial when signing.
                 mydataoverride = new
                 {
                     invoice = new

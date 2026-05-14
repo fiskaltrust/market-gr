@@ -9,6 +9,16 @@ Versions use the `yyyy.MM.no` scheme (e.g. `2026.05.1`, `2026.05.2`).
 ## [Unreleased]
 
 ### Changed
+- `cbReceiptMoment` is no longer mapped from `invoiceHeader/issueDate`; it is
+  always set to the current UTC time at conversion. The middleware
+  re-fiscalises "now" so the original date would be misleading.
+- `cbReceiptReference` is now a fresh UUID per conversion. The pasted
+  `series` + `aa` are not propagated.
+- `ftReceiptCaseData.GR.Series` and `GR.AA` are no longer emitted. The GR
+  middleware assigns its own series + serial when signing.
+- Added a collapsible notice above the converter explaining which fields are
+  intentionally not mapped, so the user can spot them up front instead of
+  inferring from the diff.
 - "Convert" now also posts to the middleware and surfaces the diff in one step
   — no more two-button dance. The single action validates the XSD, converts
   locally, calls `/sign`, and renders both a categorized differences summary
