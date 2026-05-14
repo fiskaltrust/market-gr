@@ -1,0 +1,10 @@
+{
+  "$comment": "Catalogue of remote-ESM plugins the apphost loads at boot. Each manifestUrl is resolved against import.meta.env.BASE_URL, so leading './' and no scheme both work. See docs/plugin-architecture.md.",
+  "plugins": [
+    { "manifestUrl": "plugins/qr-to-mydata/manifest.json" },
+    { "manifestUrl": "plugins/vat-lookup/manifest.json" },
+    { "manifestUrl": "plugins/mydata-to-fiskaltrust/manifest.json" },
+    { "manifestUrl": "plugins/aade-qr-renderer/manifest.json" },
+    { "manifestUrl": "plugins/receipt-cookbook/manifest.json" }
+  ]
+}

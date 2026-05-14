@@ -1,9 +1,0 @@
-{
-  "id": "poc-remote-hello",
-  "name": "Remote Plugin POC",
-  "description": "Tiny proof-of-concept plugin loaded at runtime from a manifest.json. Demonstrates the remote-ESM loader path described in docs/plugin-architecture.md.",
-  "version": "2026.05.1",
-  "entry": "./index.js",
-  "changelog": "./CHANGELOG.md",
-  "apiVersion": 1
-}

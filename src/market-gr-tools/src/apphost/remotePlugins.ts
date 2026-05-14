@@ -1,30 +1,48 @@
 import type { RemotePluginSource } from './remotePluginLoader';
 
 /**
- * Remote plugin manifests the apphost should try to load at startup.
+ * URL of the JSON manifest list. Resolved against `import.meta.env.BASE_URL`
+ * so the same relative path works in `vite dev` and after deploy.
  *
- * URLs are resolved against `import.meta.env.BASE_URL`, so a leading `./` or
- * no scheme is fine. Absolute https URLs work too, but they require the
- * remote origin to send permissive CORS headers and they widen the security
- * surface — prefer co-hosting plugins under this same Pages site.
- *
- * Failures are non-fatal: a broken manifest is logged to the console and the
- * apphost continues to render the static, in-tree plugins.
- *
- * See `docs/plugin-architecture.md` for the manifest schema and the plugin
- * entry-module contract.
+ * The actual catalogue lives at `public/plugins/index.json` — adding a plugin
+ * to the apphost means dropping its `public/plugins/<id>/` folder and adding
+ * an entry to that JSON file. No apphost rebuild required.
  */
-export const remotePluginSources: readonly RemotePluginSource[] = [
-  // POC: a tiny hand-written ESM module living under public/, exercised by
-  // CI to prove the loader path end-to-end. Removed once all in-tree plugins
-  // are migrated.
-  { manifestUrl: 'poc-remote-plugin/manifest.json' },
-  // Migrated plugins. Each manifest lives under `public/plugins/<id>/` so the
-  // Pages site serves it at /plugins/<id>/manifest.json. The plugin's own
-  // Vite build emits index.js + sourcemap into that same folder via
-  // scripts/copy-plugin.mjs.
-  { manifestUrl: 'plugins/qr-to-mydata/manifest.json' },
-  { manifestUrl: 'plugins/vat-lookup/manifest.json' },
-  { manifestUrl: 'plugins/mydata-to-fiskaltrust/manifest.json' },
-  { manifestUrl: 'plugins/aade-qr-renderer/manifest.json' },
-];
+const PLUGIN_INDEX_URL = 'plugins/index.json';
+
+/**
+ * Shape of `public/plugins/index.json`. Each entry is a relative URL to a
+ * `manifest.json` — same string as `RemotePluginSource.manifestUrl`.
+ */
+interface PluginIndex {
+  plugins: readonly { manifestUrl: string }[];
+}
+
+/**
+ * Fetch the configured remote-plugin list at boot. Failures (network error,
+ * malformed JSON, schema mismatch) are non-fatal — the apphost still renders,
+ * just with no plugin cards. We log to the console for diagnostics.
+ */
+export async function loadRemotePluginSources(): Promise<readonly RemotePluginSource[]> {
+  const base = import.meta.env.BASE_URL ?? '/';
+  const absBase = new URL(base, window.location.origin).toString();
+  const url = new URL(PLUGIN_INDEX_URL, absBase).toString();
+  try {
+    const res = await fetch(url, { credentials: 'omit' });
+    if (!res.ok) {
+      console.warn(`[remote-plugin] index.json HTTP ${res.status} at ${url}`);
+      return [];
+    }
+    const raw = (await res.json()) as Partial<PluginIndex>;
+    if (!raw || !Array.isArray(raw.plugins)) {
+      console.warn(`[remote-plugin] index.json at ${url} is missing a "plugins" array.`);
+      return [];
+    }
+    return raw.plugins
+      .filter((p): p is { manifestUrl: string } => typeof p?.manifestUrl === 'string')
+      .map((p) => ({ manifestUrl: p.manifestUrl }));
+  } catch (err) {
+    console.warn(`[remote-plugin] Failed to load plugin index ${url}:`, err);
+    return [];
+  }
+}

@@ -2,5 +2,9 @@ node_modules
 dist
 .vite
 public/mydataconverter
-public/plugins
+# Per-plugin folders under public/plugins/ are staged at build time and
+# should not be tracked. The catalogue file index.json IS tracked — it's the
+# only hand-edited artifact in there.
+public/plugins/*
+!public/plugins/index.json
 *.tsbuildinfo

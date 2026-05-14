@@ -1,8 +1,23 @@
 import * as React from 'react';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
-import type { ToolDefinition } from './tools';
 import CodeBlock from '../components/CodeBlock';
 import DiffBlock from '../components/DiffBlock';
+
+/**
+ * Shape every loaded plugin reports back to the apphost. Previously lived in
+ * a separate `tools.tsx` alongside a static catalogue; with the catalogue
+ * gone, the type only has one consumer (this file) so it lives here.
+ */
+export interface ToolDefinition {
+  id: string;
+  name: string;
+  description: string;
+  component: LazyExoticComponent<ComponentType>;
+  /** Plugin version (yyyy.MM.no). Edited by the plugin's own release script. */
+  version: string;
+  /** Raw CHANGELOG.md contents fetched alongside the manifest. */
+  changelog: string;
+}
 
 /**
  * Schema of a remote plugin's `manifest.json`. Keep this in sync with the
