@@ -1,13 +1,54 @@
-import { Suspense, useState } from 'react';
-import { tools, findTool, type ToolDefinition } from './apphost/tools';
+import { Suspense, useEffect, useState } from 'react';
+import { tools as staticTools, findTool, type ToolDefinition } from './apphost/tools';
+import {
+  loadRemotePlugins,
+  type LoadedRemotePlugin,
+} from './apphost/remotePluginLoader';
+import { remotePluginSources } from './apphost/remotePlugins';
 import { useHashRoute, href } from './apphost/router';
 import ChangelogModal from './components/ChangelogModal';
 
+/**
+ * Combined tool entry. Static, in-tree plugins are plain `ToolDefinition`s;
+ * runtime-loaded plugins additionally carry a `remote: true` flag so the UI
+ * can render a small badge.
+ */
+type CombinedTool = ToolDefinition & { remote?: boolean };
+
 export function App() {
   const route = useHashRoute();
+  const [remoteTools, setRemoteTools] = useState<LoadedRemotePlugin[]>([]);
+  const [remoteState, setRemoteState] = useState<'loading' | 'ready'>(
+    remotePluginSources.length === 0 ? 'ready' : 'loading',
+  );
+
+  useEffect(() => {
+    if (remotePluginSources.length === 0) return;
+    let cancelled = false;
+    loadRemotePlugins(remotePluginSources)
+      .then((loaded) => {
+        if (cancelled) return;
+        setRemoteTools(loaded);
+        setRemoteState('ready');
+      })
+      .catch((err) => {
+        // loadRemotePlugins already swallows per-plugin failures; this catch
+        // is defensive for the Promise.all itself.
+        console.warn('[remote-plugin] Unexpected loader error:', err);
+        if (cancelled) return;
+        setRemoteState('ready');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allTools: CombinedTool[] = [...staticTools, ...remoteTools];
   const toolMatch = route.match(/^\/tools\/([^/]+)$/);
-  const activeTool = toolMatch ? findTool(toolMatch[1]) : undefined;
-  const [changelogTool, setChangelogTool] = useState<ToolDefinition | null>(null);
+  const activeTool: CombinedTool | undefined = toolMatch
+    ? allTools.find((t) => t.id === toolMatch[1]) ?? findTool(toolMatch[1])
+    : undefined;
+  const [changelogTool, setChangelogTool] = useState<CombinedTool | null>(null);
 
   return (
     <div className="app-shell">
@@ -27,6 +68,7 @@ export function App() {
             <div className="tool-page-title">
               <a href={href('/')} className="btn btn-secondary">← Tools</a>
               <h2>{activeTool.name}</h2>
+              {activeTool.remote ? <RemoteBadge /> : null}
               <button
                 type="button"
                 onClick={() => setChangelogTool(activeTool)}
@@ -52,7 +94,11 @@ export function App() {
             </Suspense>
           </>
         ) : (
-          <Home onShowChangelog={setChangelogTool} />
+          <Home
+            tools={allTools}
+            remoteLoading={remoteState === 'loading'}
+            onShowChangelog={setChangelogTool}
+          />
         )}
       </main>
 
@@ -66,7 +112,32 @@ export function App() {
   );
 }
 
-function Home({ onShowChangelog }: { onShowChangelog: (tool: ToolDefinition) => void }) {
+function RemoteBadge() {
+  return (
+    <span
+      title="Loaded at runtime from a remote manifest. See docs/plugin-architecture.md."
+      style={{
+        background: 'transparent',
+        border: '1px solid var(--border)',
+        color: 'var(--fg-muted)',
+        borderRadius: 999,
+        padding: '2px 10px',
+        fontSize: 11,
+        fontFamily: 'monospace',
+      }}
+    >
+      remote
+    </span>
+  );
+}
+
+interface HomeProps {
+  tools: CombinedTool[];
+  remoteLoading: boolean;
+  onShowChangelog: (tool: CombinedTool) => void;
+}
+
+function Home({ tools, remoteLoading, onShowChangelog }: HomeProps) {
   return (
     <>
       <p style={{ color: 'var(--fg-muted)', marginTop: 0 }}>
@@ -76,7 +147,27 @@ function Home({ onShowChangelog }: { onShowChangelog: (tool: ToolDefinition) => 
       {tools.map((tool) => (
         <div key={tool.id} style={{ position: 'relative' }}>
           <a href={href(`/tools/${tool.id}`)} className="tool-card">
-            <h2>{tool.name}</h2>
+            <h2>
+              {tool.name}
+              {tool.remote ? (
+                <span
+                  title="Loaded at runtime from a remote manifest."
+                  style={{
+                    marginLeft: 8,
+                    background: 'transparent',
+                    border: '1px solid var(--border)',
+                    color: 'var(--fg-muted)',
+                    borderRadius: 999,
+                    padding: '1px 8px',
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  remote
+                </span>
+              ) : null}
+            </h2>
             <p>{tool.description}</p>
           </a>
           <button
@@ -106,6 +197,11 @@ function Home({ onShowChangelog }: { onShowChangelog: (tool: ToolDefinition) => 
           </button>
         </div>
       ))}
+      {remoteLoading ? (
+        <p style={{ color: 'var(--fg-muted)', fontSize: 12, marginTop: 16 }}>
+          Loading remote plugins…
+        </p>
+      ) : null}
     </>
   );
 }
