@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { ToolDefinition } from './tools';
+import CodeBlock from '../components/CodeBlock';
 
 /**
  * Schema of a remote plugin's `manifest.json`. Keep this in sync with the
@@ -30,9 +31,17 @@ export interface RemotePluginManifest {
  * Dependencies the apphost injects into a remote plugin's factory. Keeping
  * this narrow is intentional — it's the public surface area the apphost
  * commits to. Add to it deliberately.
+ *
+ * `components` exposes a small set of apphost-owned UI primitives that would
+ * otherwise force every plugin to vendor heavy dependencies (Monaco, in the
+ * case of `CodeBlock`). One copy lives in the apphost; plugins destructure
+ * what they need from `deps.components` in their factory.
  */
 export interface RemotePluginDeps {
   React: typeof React;
+  components: {
+    CodeBlock: typeof CodeBlock;
+  };
 }
 
 export interface RemotePluginExports {
@@ -157,7 +166,7 @@ export async function loadRemotePlugin(
             `or its default export is not a factory function. See docs/plugin-architecture.md.`,
         );
       }
-      const exports = mod.default({ React });
+      const exports = mod.default({ React, components: { CodeBlock } });
       if (!exports || typeof exports.Component !== 'function') {
         throw new Error(
           `Remote plugin ${manifest.id} factory did not return a { Component } object.`,

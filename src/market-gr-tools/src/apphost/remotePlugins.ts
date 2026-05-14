@@ -16,7 +16,12 @@ import type { RemotePluginSource } from './remotePluginLoader';
  */
 export const remotePluginSources: readonly RemotePluginSource[] = [
   // POC: a tiny hand-written ESM module living under public/, exercised by
-  // CI to prove the loader path end-to-end. Once a real out-of-tree plugin
-  // exists, this entry can stay (it's harmless) or be replaced.
+  // CI to prove the loader path end-to-end. Removed once all in-tree plugins
+  // are migrated.
   { manifestUrl: 'poc-remote-plugin/manifest.json' },
+  // Migrated plugins. Each manifest lives under `public/plugins/<id>/` so the
+  // Pages site serves it at /plugins/<id>/manifest.json. The plugin's own
+  // Vite build emits index.js + sourcemap into that same folder via
+  // scripts/copy-plugin.mjs.
+  { manifestUrl: 'plugins/qr-to-mydata/manifest.json' },
 ];

@@ -1,6 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import * as myDataManifest from '../tools/mydata-to-fiskaltrust/manifest';
-import * as qrToMyDataManifest from '../tools/qr-to-mydata/manifest';
 import * as vatLookupManifest from '../tools/vat-lookup/manifest';
 
 export interface ToolDefinition {
@@ -23,15 +22,6 @@ export const tools: ToolDefinition[] = [
     component: lazy(() => import('../tools/mydata-to-fiskaltrust/MyDataToFiskaltrust')),
     version: myDataManifest.version,
     changelog: myDataManifest.changelogRaw,
-  },
-  {
-    id: 'qr-to-mydata',
-    name: 'QR → myDATA payload',
-    description:
-      'Paste, drop, or pick an image of a Greek receipt QR code. The plugin decodes it locally, then fetches the AADE myDATA XML or PDF for the encoded URL.',
-    component: lazy(() => import('../tools/qr-to-mydata/QrToMydata')),
-    version: qrToMyDataManifest.version,
-    changelog: qrToMyDataManifest.changelogRaw,
   },
   {
     id: 'vat-lookup',

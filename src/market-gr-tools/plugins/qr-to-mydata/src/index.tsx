@@ -1,0 +1,528 @@
+/**
+ * Remote-ESM entry point for the `qr-to-mydata` plugin.
+ *
+ * The default export is the factory the apphost calls with its own
+ * `{ React, components }` dependencies. Everything that uses React (hooks,
+ * JSX, refs) is defined **inside the factory closure** so the classic JSX
+ * transform compiles against the apphost-provided `React`, not a bundled
+ * second copy. See plugin-architecture.md for the contract.
+ */
+import jsQR from 'jsqr';
+import type * as ReactNS from 'react';
+import type CodeBlockType from '../../../src/components/CodeBlock';
+
+interface PluginDeps {
+  React: typeof ReactNS;
+  components: {
+    CodeBlock: typeof CodeBlockType;
+  };
+}
+
+interface PluginExports {
+  Component: ReactNS.ComponentType;
+}
+
+/** Key used to hand the fetched XML over to the mydata-to-fiskaltrust plugin. */
+const HANDOFF_STORAGE_KEY = 'qr-to-mydata:lastXml';
+
+export default function createPlugin(deps: PluginDeps): PluginExports {
+  const { React, components } = deps;
+  const { CodeBlock } = components;
+  const { useCallback, useEffect, useRef, useState } = React;
+
+  interface DecodedState {
+    previewUrl: string;
+    rawText: string;
+    isUrl: boolean;
+  }
+
+  interface FetchState {
+    busy: boolean;
+    xml?: string;
+    status?: number;
+    durationMs?: number;
+    error?: string;
+    corsLikely?: boolean;
+  }
+
+  function QrToMydata() {
+    const [decoded, setDecoded] = useState<DecodedState | null>(null);
+    const [decodeError, setDecodeError] = useState<string | null>(null);
+    const [fetchState, setFetchState] = useState<FetchState>({ busy: false });
+    const [isDragOver, setIsDragOver] = useState(false);
+
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const decodeImage = useCallback(async (file: Blob) => {
+      setDecodeError(null);
+      setFetchState({ busy: false });
+
+      let previewUrl: string;
+      try {
+        previewUrl = await readAsDataUrl(file);
+      } catch (err) {
+        setDecoded(null);
+        setDecodeError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+
+      let imageData: ImageData;
+      try {
+        imageData = await loadImageData(previewUrl);
+      } catch (err) {
+        setDecoded(null);
+        setDecodeError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+
+      const result = decodeWithFallbacks(imageData);
+
+      if (!result || !result.data) {
+        setDecoded({ previewUrl, rawText: '', isUrl: false });
+        setDecodeError(
+          'No QR code could be found in this image. Try a sharper or larger crop, or a higher-contrast capture.',
+        );
+        return;
+      }
+
+      const trimmed = result.data.trim();
+      setDecoded({
+        previewUrl,
+        rawText: trimmed,
+        isUrl: looksLikeHttpUrl(trimmed),
+      });
+    }, []);
+
+    useEffect(() => {
+      const onPaste = (event: ClipboardEvent) => {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+        for (const item of Array.from(items)) {
+          if (item.kind === 'file' && item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+              void decodeImage(file);
+              return;
+            }
+          }
+        }
+      };
+      window.addEventListener('paste', onPaste);
+      return () => window.removeEventListener('paste', onPaste);
+    }, [decodeImage]);
+
+    const onDrop = useCallback(
+      (event: ReactNS.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        setIsDragOver(false);
+        const file = Array.from(event.dataTransfer.files).find((f) =>
+          f.type.startsWith('image/'),
+        );
+        if (file) {
+          void decodeImage(file);
+        } else {
+          setDecodeError('That drop did not contain an image file.');
+        }
+      },
+      [decodeImage],
+    );
+
+    const onFilePicked = useCallback(
+      (event: ReactNS.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) void decodeImage(file);
+        event.target.value = '';
+      },
+      [decodeImage],
+    );
+
+    const fetchMyDataXml = useCallback(async () => {
+      if (!decoded?.isUrl) return;
+      const url = `${decoded.rawText}/mydata`;
+      setFetchState({ busy: true });
+      const start = performance.now();
+      try {
+        const response = await fetch(url);
+        const duration = Math.round(performance.now() - start);
+        const text = await response.text();
+        if (!response.ok) {
+          setFetchState({
+            busy: false,
+            status: response.status,
+            durationMs: duration,
+            error: `HTTP ${response.status} ${response.statusText}`,
+            xml: text,
+          });
+          return;
+        }
+        setFetchState({
+          busy: false,
+          status: response.status,
+          durationMs: duration,
+          xml: text,
+        });
+      } catch (err: unknown) {
+        const duration = Math.round(performance.now() - start);
+        const message = err instanceof Error ? err.message : String(err);
+        const corsLikely =
+          err instanceof TypeError &&
+          (!message || /failed to fetch|networkerror|load failed/i.test(message));
+        setFetchState({
+          busy: false,
+          durationMs: duration,
+          error: message || 'Network request failed (likely blocked by CORS).',
+          corsLikely,
+        });
+      }
+    }, [decoded]);
+
+    const openPdf = useCallback(() => {
+      if (!decoded?.isUrl) return;
+      window.open(`${decoded.rawText}/pdf`, '_blank', 'noopener,noreferrer');
+    }, [decoded]);
+
+    const openInConverter = useCallback(() => {
+      if (!fetchState.xml) return;
+      try {
+        sessionStorage.setItem(HANDOFF_STORAGE_KEY, fetchState.xml);
+      } catch {
+        // sessionStorage can be unavailable in private modes — ignore, the
+        // user can still copy/paste manually.
+      }
+      // Hand off via hash routing — the apphost listens on hashchange. We
+      // intentionally don't take a navigate() dep from the apphost; the
+      // contract stays narrow.
+      window.location.hash = '#/tools/mydata-to-fiskaltrust';
+    }, [fetchState.xml]);
+
+    const xmlUrl = decoded?.isUrl ? `${decoded.rawText}/mydata` : undefined;
+    const pdfUrl = decoded?.isUrl ? `${decoded.rawText}/pdf` : undefined;
+
+    return (
+      <>
+        <p style={{ marginTop: 0, color: 'var(--fg-muted)', fontSize: 14 }}>
+          Paste, drop, or pick an image of a Greek receipt QR code. The image is
+          decoded locally — only the AADE fetches below leave your browser.
+        </p>
+
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragOver(true);
+          }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          style={{
+            border: `2px dashed ${isDragOver ? 'var(--accent)' : 'var(--border)'}`,
+            borderRadius: 8,
+            background: isDragOver ? 'rgba(78,161,255,0.05)' : 'var(--bg-elev)',
+            padding: 20,
+            minHeight: 200,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            cursor: 'pointer',
+            transition: 'border-color 120ms ease, background 120ms ease',
+          }}
+        >
+          {decoded?.previewUrl ? (
+            <img
+              src={decoded.previewUrl}
+              alt="QR preview"
+              style={{
+                maxWidth: '100%',
+                maxHeight: 240,
+                borderRadius: 4,
+                background: '#fff',
+              }}
+            />
+          ) : (
+            <>
+              <div style={{ fontSize: 14, color: 'var(--fg-muted)' }}>
+                Drop an image here, click to pick a file, or press <kbd>Ctrl/Cmd</kbd>+<kbd>V</kbd> to
+                paste from the clipboard.
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--fg-muted)' }}>
+                PNG, JPEG, WebP — anything the browser can decode.
+              </div>
+            </>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onFilePicked}
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {decodeError && (
+          <p className="status error" style={{ marginTop: 12 }}>
+            {decodeError}
+          </p>
+        )}
+
+        {decoded && decoded.rawText && (
+          <section style={{ marginTop: 20 }}>
+            <div className="editor-header" style={{ padding: 0, marginBottom: 6 }}>
+              <span>Decoded QR contents</span>
+              <span>{decoded.isUrl ? 'looks like a URL' : 'not a URL'}</span>
+            </div>
+            <div
+              style={{
+                padding: '10px 12px',
+                border: `1px solid ${decoded.isUrl ? 'var(--border)' : '#d29922'}`,
+                borderRadius: 6,
+                background: 'var(--bg-elev)',
+                fontFamily: 'JetBrains Mono, Consolas, monospace',
+                fontSize: 13,
+                wordBreak: 'break-all',
+              }}
+            >
+              {decoded.isUrl ? (
+                <a href={decoded.rawText} target="_blank" rel="noreferrer">
+                  {decoded.rawText}
+                </a>
+              ) : (
+                decoded.rawText
+              )}
+            </div>
+            {!decoded.isUrl && (
+              <p className="status" style={{ marginTop: 8, color: '#d29922' }}>
+                The QR did not encode an http(s) URL. AADE receipt QRs always do — double-check
+                the image is the right one.
+              </p>
+            )}
+          </section>
+        )}
+
+        {decoded?.isUrl && (
+          <div className="toolbar" style={{ marginTop: 16 }}>
+            <button
+              className="btn"
+              onClick={() => void fetchMyDataXml()}
+              disabled={fetchState.busy}
+              title={xmlUrl}
+            >
+              {fetchState.busy ? 'Fetching…' : 'Fetch myDATA XML'}
+            </button>
+            <button className="btn btn-secondary" onClick={openPdf} title={pdfUrl}>
+              Open PDF in new tab
+            </button>
+            {fetchState.xml && !fetchState.error && (
+              <button className="btn btn-secondary" onClick={openInConverter}>
+                Open in MyData → fiskaltrust converter
+              </button>
+            )}
+            <span className="status" style={{ marginLeft: 'auto' }}>
+              {fetchState.status && !fetchState.error && (
+                <>HTTP {fetchState.status} · {fetchState.durationMs} ms</>
+              )}
+            </span>
+          </div>
+        )}
+
+        {fetchState.error && xmlUrl && (
+          <div
+            style={{
+              marginTop: 12,
+              padding: '10px 12px',
+              border: '1px solid #f8514980',
+              borderRadius: 6,
+              background: 'rgba(248,81,73,0.08)',
+              fontSize: 13,
+            }}
+          >
+            <strong style={{ color: '#f85149' }}>Fetch failed</strong>
+            <div
+              style={{
+                marginTop: 4,
+                fontFamily: 'JetBrains Mono, Consolas, monospace',
+                fontSize: 12,
+              }}
+            >
+              {fetchState.error}
+            </div>
+            {fetchState.corsLikely && (
+              <p style={{ margin: '8px 0 0', color: 'var(--fg-muted)' }}>
+                AADE may block browser fetches from this origin. Try opening the URL directly in a
+                new tab:{' '}
+                <a href={xmlUrl} target="_blank" rel="noreferrer">
+                  {xmlUrl}
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {fetchState.xml && !fetchState.error && (
+          <section style={{ marginTop: 16 }}>
+            <div className="editor">
+              <div className="editor-header">
+                <span>myDATA XML response</span>
+                <span>{fetchState.xml.length.toLocaleString()} chars</span>
+              </div>
+              <CodeBlock value={fetchState.xml} language="xml" style={{ flex: 1 }} minHeight={360} />
+            </div>
+          </section>
+        )}
+      </>
+    );
+  }
+
+  return { Component: QrToMydata };
+}
+
+// ----------------------------------------------------------------------
+// Helpers — pure, no React dependency.
+// ----------------------------------------------------------------------
+
+function readAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === 'string') resolve(result);
+      else reject(new Error('Unexpected FileReader result type.'));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageData(src: string): Promise<ImageData> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) {
+        reject(new Error('Browser refused to allocate a 2D canvas context.'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      try {
+        resolve(ctx.getImageData(0, 0, canvas.width, canvas.height));
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    };
+    img.onerror = () => reject(new Error('The browser could not decode this image.'));
+    img.src = src;
+  });
+}
+
+/**
+ * Runs jsQR against a series of progressively-aggressive image variants.
+ * jsQR with `attemptBoth` handles dark-on-light vs light-on-dark inversion,
+ * but it does NOT compensate for low contrast (e.g. grey-on-grey prints).
+ * We follow up with an Otsu-binarized variant, and for small images an
+ * upscaled pass too — both before and after binarization.
+ */
+function decodeWithFallbacks(imageData: ImageData): ReturnType<typeof jsQR> {
+  const attempt = (data: ImageData) =>
+    jsQR(data.data, data.width, data.height, { inversionAttempts: 'attemptBoth' });
+
+  let result = attempt(imageData);
+  if (result) return result;
+
+  const binarized = otsuBinarize(imageData);
+  result = attempt(binarized);
+  if (result) return result;
+
+  const shortSide = Math.min(imageData.width, imageData.height);
+  if (shortSide < 600) {
+    const factor = Math.max(2, Math.ceil(600 / shortSide));
+    const upscaled = scaleImageData(imageData, factor);
+    result = attempt(upscaled);
+    if (result) return result;
+    result = attempt(otsuBinarize(upscaled));
+    if (result) return result;
+  }
+
+  return null;
+}
+
+function otsuBinarize(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const pixelCount = width * height;
+  const gray = new Uint8ClampedArray(pixelCount);
+  const histogram = new Array<number>(256).fill(0);
+
+  for (let i = 0, j = 0; j < pixelCount; i += 4, j++) {
+    const v = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+    gray[j] = v;
+    histogram[v]++;
+  }
+
+  let sumAll = 0;
+  for (let t = 0; t < 256; t++) sumAll += t * histogram[t];
+
+  let sumB = 0;
+  let wB = 0;
+  let maxVar = 0;
+  let threshold = 127;
+  for (let t = 0; t < 256; t++) {
+    wB += histogram[t];
+    if (wB === 0) continue;
+    const wF = pixelCount - wB;
+    if (wF === 0) break;
+    sumB += t * histogram[t];
+    const mB = sumB / wB;
+    const mF = (sumAll - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > maxVar) {
+      maxVar = between;
+      threshold = t;
+    }
+  }
+
+  const out = new Uint8ClampedArray(data.length);
+  for (let j = 0; j < pixelCount; j++) {
+    const v = gray[j] > threshold ? 255 : 0;
+    const k = j * 4;
+    out[k] = out[k + 1] = out[k + 2] = v;
+    out[k + 3] = 255;
+  }
+  return new ImageData(out, width, height);
+}
+
+function scaleImageData(src: ImageData, factor: number): ImageData {
+  const w = src.width * factor;
+  const h = src.height * factor;
+  const source = document.createElement('canvas');
+  source.width = src.width;
+  source.height = src.height;
+  source.getContext('2d')!.putImageData(src, 0, 0);
+
+  const target = document.createElement('canvas');
+  target.width = w;
+  target.height = h;
+  const ctx = target.getContext('2d', { willReadFrequently: true })!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h);
+}
+
+function looksLikeHttpUrl(text: string): boolean {
+  try {
+    const url = new URL(text);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

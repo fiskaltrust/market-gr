@@ -90,6 +90,18 @@ jobs:
           # AppBundle under wwwroot/. Point copy-wasm.mjs at that directory.
           WASM_APPBUNDLE="$GITHUB_WORKSPACE/artifacts/wasm/wwwroot" npm run wasm:copy
 
+      # --- Remote plugins (built standalone, then staged under public/) ---
+
+      - name: Build qr-to-mydata plugin
+        working-directory: src/market-gr-tools/plugins/qr-to-mydata
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage qr-to-mydata plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs qr-to-mydata
+
       - name: Build React app
         working-directory: src/market-gr-tools
         env:
