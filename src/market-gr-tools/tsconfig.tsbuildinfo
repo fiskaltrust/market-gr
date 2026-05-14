@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/apphost/router.ts","./src/apphost/tools.tsx","./src/tools/mydata-to-fiskaltrust/mydatatofiskaltrust.tsx","./src/tools/mydata-to-fiskaltrust/wasmloader.ts"],"version":"5.9.3"}
