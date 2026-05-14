@@ -13,6 +13,11 @@ import CodeBlock from '../../components/CodeBlock';
 const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <InvoicesDoc xmlns="http://www.aade.gr/myDATA/invoice/v1.0">
   <invoice>
+    <issuer>
+      <vatNumber>098000979</vatNumber>
+      <country>GR</country>
+      <branch>5</branch>
+    </issuer>
     <invoiceHeader>
       <series>A</series>
       <aa>1</aa>
@@ -29,11 +34,13 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
     </paymentMethods>
     <invoiceDetails>
       <lineNumber>1</lineNumber>
-      <itemDescr>Sample item</itemDescr>
-      <quantity>2</quantity>
       <netValue>100.00</netValue>
       <vatCategory>1</vatCategory>
       <vatAmount>24.00</vatAmount>
+      <incomeClassification>
+        <classificationCategory xmlns="https://www.aade.gr/myDATA/incomeClassificaton/v1.0">category1_95</classificationCategory>
+        <amount xmlns="https://www.aade.gr/myDATA/incomeClassificaton/v1.0">100.00</amount>
+      </incomeClassification>
     </invoiceDetails>
     <invoiceSummary>
       <totalNetValue>100.00</totalNetValue>
