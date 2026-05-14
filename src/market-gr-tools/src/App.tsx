@@ -1,11 +1,13 @@
-import { Suspense } from 'react';
-import { tools, findTool } from './apphost/tools';
+import { Suspense, useState } from 'react';
+import { tools, findTool, type ToolDefinition } from './apphost/tools';
 import { useHashRoute, href } from './apphost/router';
+import ChangelogModal from './components/ChangelogModal';
 
 export function App() {
   const route = useHashRoute();
   const toolMatch = route.match(/^\/tools\/([^/]+)$/);
   const activeTool = toolMatch ? findTool(toolMatch[1]) : undefined;
+  const [changelogTool, setChangelogTool] = useState<ToolDefinition | null>(null);
 
   return (
     <div className="app-shell">
@@ -25,6 +27,24 @@ export function App() {
             <div className="tool-page-title">
               <a href={href('/')} className="btn btn-secondary">← Tools</a>
               <h2>{activeTool.name}</h2>
+              <button
+                type="button"
+                onClick={() => setChangelogTool(activeTool)}
+                title={`Show changelog for ${activeTool.name}`}
+                aria-label={`Show changelog for ${activeTool.name}`}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'var(--fg-muted)',
+                  borderRadius: 999,
+                  padding: '2px 10px',
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                }}
+              >
+                v{activeTool.version}
+              </button>
             </div>
             <p style={{ marginTop: 0, color: 'var(--fg-muted)' }}>{activeTool.description}</p>
             <Suspense fallback={<p>Loading tool…</p>}>
@@ -32,14 +52,21 @@ export function App() {
             </Suspense>
           </>
         ) : (
-          <Home />
+          <Home onShowChangelog={setChangelogTool} />
         )}
       </main>
+
+      <ChangelogModal
+        open={changelogTool !== null}
+        onClose={() => setChangelogTool(null)}
+        title={changelogTool?.name ?? ''}
+        raw={changelogTool?.changelog ?? ''}
+      />
     </div>
   );
 }
 
-function Home() {
+function Home({ onShowChangelog }: { onShowChangelog: (tool: ToolDefinition) => void }) {
   return (
     <>
       <p style={{ color: 'var(--fg-muted)', marginTop: 0 }}>
@@ -47,10 +74,37 @@ function Home() {
         Pick a tool below — everything runs locally in your browser, nothing is uploaded.
       </p>
       {tools.map((tool) => (
-        <a key={tool.id} href={href(`/tools/${tool.id}`)} className="tool-card">
-          <h2>{tool.name}</h2>
-          <p>{tool.description}</p>
-        </a>
+        <div key={tool.id} style={{ position: 'relative' }}>
+          <a href={href(`/tools/${tool.id}`)} className="tool-card">
+            <h2>{tool.name}</h2>
+            <p>{tool.description}</p>
+          </a>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onShowChangelog(tool);
+            }}
+            title={`Show changelog for ${tool.name}`}
+            aria-label={`Show changelog for ${tool.name}`}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              background: 'var(--bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg-muted)',
+              borderRadius: 999,
+              padding: '2px 10px',
+              fontSize: 11,
+              fontFamily: 'monospace',
+              cursor: 'pointer',
+            }}
+          >
+            v{tool.version}
+          </button>
+        </div>
       ))}
     </>
   );

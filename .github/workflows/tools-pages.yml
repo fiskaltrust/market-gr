@@ -22,7 +22,7 @@ on:
 # builds and uploads the artifact so the deploy job can be turned on later
 # without further changes.
 permissions:
-  contents: read
+  contents: write   # needed for the auto-release commit on push to main
   pages: write
   id-token: write
 
@@ -58,6 +58,28 @@ jobs:
       - name: Install npm dependencies
         working-directory: src/market-gr-tools
         run: npm ci
+
+      # Auto-bump per-plugin versions for any plugin whose [Unreleased]
+      # section has entries. Commits back with [skip ci] to avoid loops.
+      # Only runs on direct pushes to main — PRs and workflow_dispatch
+      # builds keep the in-tree versions as-is.
+      - name: Auto-release plugins (push to main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: src/market-gr-tools
+        run: node scripts/release.mjs --auto-all
+
+      - name: Commit auto-release bumps
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/market-gr-tools/src/tools/*/manifest.ts src/market-gr-tools/src/tools/*/CHANGELOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): auto-bump plugin versions [skip ci]"
+            git push
+          else
+            echo "No plugin version changes to commit."
+          fi
 
       - name: Copy WASM AppBundle into public/
         working-directory: src/market-gr-tools
