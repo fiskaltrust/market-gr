@@ -74,6 +74,10 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <totalOtherTaxesAmount>0</totalOtherTaxesAmount>
       <totalDeductionsAmount>0</totalDeductionsAmount>
       <totalGrossValue>124.00</totalGrossValue>
+      <incomeClassification>
+        <classificationCategory xmlns="https://www.aade.gr/myDATA/incomeClassificaton/v1.0">category1_95</classificationCategory>
+        <amount xmlns="https://www.aade.gr/myDATA/incomeClassificaton/v1.0">100.00</amount>
+      </incomeClassification>
     </invoiceSummary>
   </invoice>
 </InvoicesDoc>
