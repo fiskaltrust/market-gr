@@ -15,7 +15,7 @@ them via hash links. New tools register themselves in
 
 ## Local development
 
-The React app loads a .NET 9 WebAssembly bundle produced by
+The React app loads a .NET 10 WebAssembly bundle produced by
 `plugins/MyDataConverter.Wasm`. You need both pieces to run locally.
 
 ```pwsh

@@ -15,7 +15,7 @@ const defaultBundle = resolve(
   pluginRoot,
   'bin',
   'Release',
-  'net9.0',
+  'net10.0',
   'browser-wasm',
   'AppBundle',
 );

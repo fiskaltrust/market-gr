@@ -9,6 +9,7 @@ Versions use the `yyyy.MM.no` scheme (e.g. `2026.05.1`, `2026.05.2`).
 ## [Unreleased]
 
 ### Changed
+- Upgraded the WebAssembly runtime from .NET 9 to .NET 10.
 - `cbReceiptMoment` is no longer mapped from `invoiceHeader/issueDate`; it is
   always set to the current UTC time at conversion. The middleware
   re-fiscalises "now" so the original date would be misleading.
