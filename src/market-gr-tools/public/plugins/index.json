@@ -5,6 +5,7 @@
     { "manifestUrl": "plugins/vat-lookup/manifest.json" },
     { "manifestUrl": "plugins/mydata-to-fiskaltrust/manifest.json" },
     { "manifestUrl": "plugins/aade-qr-renderer/manifest.json" },
-    { "manifestUrl": "plugins/receipt-cookbook/manifest.json" }
+    { "manifestUrl": "plugins/receipt-cookbook/manifest.json" },
+    { "manifestUrl": "plugins/aade-errors/manifest.json" }
   ]
 }

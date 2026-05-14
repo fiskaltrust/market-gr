@@ -1,0 +1,9 @@
+{
+  "id": "aade-errors",
+  "name": "AADE error codes",
+  "description": "Searchable dictionary of AADE myDATA rejection codes. Type a code or keyword to filter the table, or paste a full AADE XML response to highlight the matching row. Codes are sourced from the published myDATA API documentation (v1.0.9 ERP, plus selected forum-confirmed validation errors).",
+  "version": "2026.05.1",
+  "entry": "./index.js",
+  "changelog": "./CHANGELOG.md",
+  "apiVersion": 1
+}

@@ -148,6 +148,16 @@ jobs:
         working-directory: src/market-gr-tools
         run: node scripts/copy-plugin.mjs receipt-cookbook
 
+      - name: Build aade-errors plugin
+        working-directory: src/market-gr-tools/plugins/aade-errors
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage aade-errors plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs aade-errors
+
       - name: Build React app
         working-directory: src/market-gr-tools
         env:
