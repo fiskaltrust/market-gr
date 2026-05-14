@@ -92,9 +92,12 @@ jobs:
     name: Deploy to GitHub Pages
     needs: build
     # Deploy on main, plus a one-off allowance for this PR's branch so the
-    # initial rollout is visible before merge. The branch-specific clause is
-    # naturally retired once the PR merges and the branch is deleted.
-    if: github.ref == 'refs/heads/main' || github.head_ref == 'claude/quirky-jang-26058f'
+    # initial rollout is visible before merge. Trigger that one-off via
+    # `gh workflow run --ref claude/quirky-jang-26058f` since the PR's
+    # checkout ref (refs/pull/N/merge) doesn't satisfy the github-pages
+    # environment branch policy. The branch-specific clause is naturally
+    # retired once the PR merges and the branch is deleted.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/quirky-jang-26058f'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
