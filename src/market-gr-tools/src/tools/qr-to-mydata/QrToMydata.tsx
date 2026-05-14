@@ -58,13 +58,11 @@ export default function QrToMydata() {
       return;
     }
 
-    const result = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'attemptBoth',
-    });
+    const result = decodeWithFallbacks(imageData);
 
     if (!result || !result.data) {
       setDecoded({ previewUrl, rawText: '', isUrl: false });
-      setDecodeError('No QR code could be found in this image. Try a sharper or larger crop.');
+      setDecodeError('No QR code could be found in this image. Try a sharper or larger crop, or a higher-contrast capture.');
       return;
     }
 
@@ -409,6 +407,107 @@ function loadImageData(src: string): Promise<ImageData> {
     img.onerror = () => reject(new Error('The browser could not decode this image.'));
     img.src = src;
   });
+}
+
+/**
+ * Runs jsQR against a series of progressively-aggressive image variants.
+ * jsQR with `attemptBoth` handles dark-on-light vs light-on-dark inversion,
+ * but it does NOT compensate for low contrast (e.g. grey-on-grey prints).
+ * We follow up with an Otsu-binarized variant, and for small images an
+ * upscaled pass too — both before and after binarization.
+ */
+function decodeWithFallbacks(imageData: ImageData): ReturnType<typeof jsQR> {
+  const attempt = (data: ImageData) =>
+    jsQR(data.data, data.width, data.height, { inversionAttempts: 'attemptBoth' });
+
+  let result = attempt(imageData);
+  if (result) return result;
+
+  const binarized = otsuBinarize(imageData);
+  result = attempt(binarized);
+  if (result) return result;
+
+  // Small captures don't give jsQR enough pixels per module. Nearest-neighbour
+  // upscale to roughly 600px on the short side, then retry both raw and
+  // binarized.
+  const shortSide = Math.min(imageData.width, imageData.height);
+  if (shortSide < 600) {
+    const factor = Math.max(2, Math.ceil(600 / shortSide));
+    const upscaled = scaleImageData(imageData, factor);
+    result = attempt(upscaled);
+    if (result) return result;
+    result = attempt(otsuBinarize(upscaled));
+    if (result) return result;
+  }
+
+  return null;
+}
+
+/**
+ * Otsu's method binarization. Picks the threshold that maximises
+ * between-class variance over a luma histogram, then forces every pixel to
+ * pure black or pure white. Robust against low-contrast grey QRs.
+ */
+function otsuBinarize(imageData: ImageData): ImageData {
+  const { data, width, height } = imageData;
+  const pixelCount = width * height;
+  const gray = new Uint8ClampedArray(pixelCount);
+  const histogram = new Array<number>(256).fill(0);
+
+  for (let i = 0, j = 0; j < pixelCount; i += 4, j++) {
+    const v = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+    gray[j] = v;
+    histogram[v]++;
+  }
+
+  let sumAll = 0;
+  for (let t = 0; t < 256; t++) sumAll += t * histogram[t];
+
+  let sumB = 0;
+  let wB = 0;
+  let maxVar = 0;
+  let threshold = 127;
+  for (let t = 0; t < 256; t++) {
+    wB += histogram[t];
+    if (wB === 0) continue;
+    const wF = pixelCount - wB;
+    if (wF === 0) break;
+    sumB += t * histogram[t];
+    const mB = sumB / wB;
+    const mF = (sumAll - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > maxVar) {
+      maxVar = between;
+      threshold = t;
+    }
+  }
+
+  const out = new Uint8ClampedArray(data.length);
+  for (let j = 0; j < pixelCount; j++) {
+    const v = gray[j] > threshold ? 255 : 0;
+    const k = j * 4;
+    out[k] = out[k + 1] = out[k + 2] = v;
+    out[k + 3] = 255;
+  }
+  return new ImageData(out, width, height);
+}
+
+/** Nearest-neighbour upscale via an offscreen canvas. */
+function scaleImageData(src: ImageData, factor: number): ImageData {
+  const w = src.width * factor;
+  const h = src.height * factor;
+  const source = document.createElement('canvas');
+  source.width = src.width;
+  source.height = src.height;
+  source.getContext('2d')!.putImageData(src, 0, 0);
+
+  const target = document.createElement('canvas');
+  target.width = w;
+  target.height = h;
+  const ctx = target.getContext('2d', { willReadFrequently: true })!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, 0, 0, w, h);
+  return ctx.getImageData(0, 0, w, h);
 }
 
 function looksLikeHttpUrl(text: string): boolean {
