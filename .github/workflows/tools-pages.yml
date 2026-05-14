@@ -162,11 +162,12 @@ jobs:
         working-directory: src/market-gr-tools
         env:
           NODE_ENV: production
-          # The market-gr repo is private, so Pages publishes to an auto-generated
-          # *.pages.github.io subdomain at the root path. If the repo is later made
-          # public (URL becomes fiskaltrust.github.io/market-gr/), change to
-          # VITE_BASE=/market-gr/tools/.
-          VITE_BASE: /
+          # The market-gr repo is public, so Pages publishes at
+          # https://fiskaltrust.github.io/market-gr/ — the base path must
+          # match the repo name. If the repo is ever made private again
+          # the URL collapses to a *.pages.github.io subdomain at root
+          # path and this needs to be set back to "/".
+          VITE_BASE: /market-gr/
         run: npm run build
 
       - name: Upload Pages artifact
