@@ -76,6 +76,11 @@ jobs:
         working-directory: src/market-gr-tools
         env:
           NODE_ENV: production
+          # The market-gr repo is private, so Pages publishes to an auto-generated
+          # *.pages.github.io subdomain at the root path. If the repo is later made
+          # public (URL becomes fiskaltrust.github.io/market-gr/), change to
+          # VITE_BASE=/market-gr/tools/.
+          VITE_BASE: /
         run: npm run build
 
       - name: Upload Pages artifact
@@ -86,7 +91,10 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-    if: github.ref == 'refs/heads/main'
+    # Deploy on main, plus a one-off allowance for this PR's branch so the
+    # initial rollout is visible before merge. The branch-specific clause is
+    # naturally retired once the PR merges and the branch is deleted.
+    if: github.ref == 'refs/heads/main' || github.head_ref == 'claude/quirky-jang-26058f'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
