@@ -57,12 +57,6 @@ export function summarizeXmlDiff(originalXml: string, generatedXml: string): Dif
   return { identical, onlyOriginal, onlyGenerated, valueChanges };
 }
 
-/**
- * Returns a Map keyed by element path (with indices for repeated siblings,
- * e.g. `invoice[0]/invoiceDetails[1]/lineNumber`) to the text content of
- * each leaf element. Attributes are appended as `@attr` pseudo-children.
- * Returns null on parse failure.
- */
 function collectLeafValues(xml: string): Map<string, string> | null {
   if (!xml.trim()) return new Map();
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
@@ -73,7 +67,6 @@ function collectLeafValues(xml: string): Map<string, string> | null {
 }
 
 function walk(node: Element, path: string, out: Map<string, string>): void {
-  // Capture attributes first.
   for (const attr of Array.from(node.attributes)) {
     if (attr.name === 'xmlns' || attr.name.startsWith('xmlns:')) continue;
     out.set(`${path}/@${attr.localName}`, attr.value);

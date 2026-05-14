@@ -1,5 +1,4 @@
-import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
-import * as myDataManifest from '../tools/mydata-to-fiskaltrust/manifest';
+import { type ComponentType, type LazyExoticComponent } from 'react';
 
 export interface ToolDefinition {
   id: string;
@@ -8,21 +7,21 @@ export interface ToolDefinition {
   component: LazyExoticComponent<ComponentType>;
   /** Plugin version (yyyy.MM.no). Edited by `scripts/release.mjs`. */
   version: string;
-  /** Raw CHANGELOG.md contents, imported via Vite's `?raw` suffix. */
+  /** Raw CHANGELOG.md contents. */
   changelog: string;
 }
 
-export const tools: ToolDefinition[] = [
-  {
-    id: 'mydata-to-fiskaltrust',
-    name: 'MyData → fiskaltrust ReceiptRequest',
-    description:
-      'Paste an AADE myDATA InvoicesDoc XML and convert it back into a fiskaltrust.Middleware ReceiptRequest JSON. Runs entirely in the browser via .NET WebAssembly.',
-    component: lazy(() => import('../tools/mydata-to-fiskaltrust/MyDataToFiskaltrust')),
-    version: myDataManifest.version,
-    changelog: myDataManifest.changelogRaw,
-  },
-];
+/**
+ * The static `tools` array is now empty — every in-tree plugin has been
+ * migrated to a remote-ESM plugin (see `remotePlugins.ts`). The exported
+ * `ToolDefinition` type is still used by the remote loader and by `App.tsx`.
+ *
+ * The array itself stays (empty) until the Phase 4 cleanup removes the
+ * static-tools code path from `App.tsx`. Keeping it around for one
+ * intermediate commit means Phase 3 is a pure migration with no apphost
+ * code restructuring on top.
+ */
+export const tools: ToolDefinition[] = [];
 
 export function findTool(id: string): ToolDefinition | undefined {
   return tools.find((t) => t.id === id);

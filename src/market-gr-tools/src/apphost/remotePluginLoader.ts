@@ -2,6 +2,7 @@ import * as React from 'react';
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { ToolDefinition } from './tools';
 import CodeBlock from '../components/CodeBlock';
+import DiffBlock from '../components/DiffBlock';
 
 /**
  * Schema of a remote plugin's `manifest.json`. Keep this in sync with the
@@ -41,6 +42,7 @@ export interface RemotePluginDeps {
   React: typeof React;
   components: {
     CodeBlock: typeof CodeBlock;
+    DiffBlock: typeof DiffBlock;
   };
 }
 
@@ -166,7 +168,7 @@ export async function loadRemotePlugin(
             `or its default export is not a factory function. See docs/plugin-architecture.md.`,
         );
       }
-      const exports = mod.default({ React, components: { CodeBlock } });
+      const exports = mod.default({ React, components: { CodeBlock, DiffBlock } });
       if (!exports || typeof exports.Component !== 'function') {
         throw new Error(
           `Remote plugin ${manifest.id} factory did not return a { Component } object.`,

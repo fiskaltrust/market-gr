@@ -1,8 +1,12 @@
 /**
  * Loads the MyDataConverter .NET WebAssembly runtime once and exposes the
- * Convert(xml) export. The .NET runtime is large (~3 MB), so we memoize the
- * promise to make sure it's only created once even under React StrictMode
- * double-mounts.
+ * Convert(xml) and Validate(xml) exports.
+ *
+ * The .NET AppBundle is staged alongside this plugin's `index.js` by the
+ * apphost's build pipeline (see `scripts/copy-plugin.mjs`). We resolve
+ * `dotnet.js` from a URL relative to **this module** so it works no matter
+ * what subpath the apphost mounted the plugin under — i.e. exactly the
+ * pattern documented in docs/plugin-architecture.md §5.
  */
 
 interface DotnetRuntime {
@@ -48,7 +52,12 @@ export function loadConverter(): Promise<ConverterApi> {
 }
 
 async function initialize(): Promise<ConverterApi> {
-  const dotnetUrl = `${import.meta.env.BASE_URL}mydataconverter/_framework/dotnet.js`;
+  // `import.meta.url` is the URL of this plugin's `index.js` after the
+  // apphost imports it. `_framework/` is staged next to that file by
+  // copy-plugin.mjs, so the relative resolution lines up regardless of where
+  // the plugin is mounted (`/plugins/mydata-to-fiskaltrust/` today, anywhere
+  // tomorrow).
+  const dotnetUrl = new URL(/* @vite-ignore */ './_framework/dotnet.js', import.meta.url).href;
   const mod = (await import(/* @vite-ignore */ dotnetUrl)) as { dotnet: DotnetEntry };
 
   const runtime = await mod.dotnet.withApplicationArguments().create();
@@ -56,6 +65,7 @@ async function initialize(): Promise<ConverterApi> {
   const exports = await runtime.getAssemblyExports(config.mainAssemblyName);
   return {
     convert: (xml) => exports.MyDataConverter.Wasm.Interop.Convert(xml),
-    validate: (xml) => JSON.parse(exports.MyDataConverter.Wasm.Interop.Validate(xml)) as ValidationIssue[],
+    validate: (xml) =>
+      JSON.parse(exports.MyDataConverter.Wasm.Interop.Validate(xml)) as ValidationIssue[],
   };
 }

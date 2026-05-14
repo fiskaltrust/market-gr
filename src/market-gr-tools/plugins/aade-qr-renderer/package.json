@@ -1,0 +1,21 @@
+{
+  "name": "@market-gr-tools/aade-qr-renderer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "AADE QR renderer — given an invoice MARK (and optional UID + authenticationCode) build the canonical AADE myDATA receipt URL and render its QR code locally. Built as an ESM library and loaded at runtime by the market-gr-tools apphost.",
+  "scripts": {
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.12",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

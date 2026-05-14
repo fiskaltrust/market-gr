@@ -9,6 +9,18 @@ Versions use the `yyyy.MM.no` scheme (e.g. `2026.05.1`, `2026.05.2`).
 ## [Unreleased]
 
 ### Changed
+- Migrated out of the apphost source tree into its own plugin folder
+  (`plugins/mydata-to-fiskaltrust/`) with its own Vite library build for the
+  React side and a sibling `dotnet/` folder housing the `MyDataConverter.Core`
+  and `MyDataConverter.Wasm` projects. The plugin is now loaded at runtime via
+  the remote-ESM loader contract documented in `docs/plugin-architecture.md`.
+- The shared Monaco-backed `CodeBlock` and `DiffBlock` are now injected by the
+  apphost via `deps.components` rather than imported directly. Monaco no
+  longer ships in this plugin's React bundle.
+- `wasmLoader` now resolves `_framework/dotnet.js` via
+  `new URL('./_framework/dotnet.js', import.meta.url).href` so the .NET
+  AppBundle is fetched relative to the plugin's own subpath, not from
+  `import.meta.env.BASE_URL`.
 - Upgraded the WebAssembly runtime from .NET 9 to .NET 10.
 - `cbReceiptMoment` is no longer mapped from `invoiceHeader/issueDate`; it is
   always set to the current UTC time at conversion. The middleware

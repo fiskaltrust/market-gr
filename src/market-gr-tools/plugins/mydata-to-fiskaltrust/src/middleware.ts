@@ -1,10 +1,6 @@
 /**
  * Thin client around the fiskaltrust POS System API for sending the
  * converted ReceiptRequest to the Greek Middleware sandbox.
- *
- * Auth values come from the developer-platform playground's
- * SANDBOX_CREDENTIALS.GR — the same shared sandbox cashbox the playground
- * uses, so behaviour matches what's seen there.
  */
 
 const SANDBOX_BASE_URL = 'https://possystem-api-sandbox.fiskaltrust.eu/v2';
@@ -22,7 +18,6 @@ export interface MiddlewareResponse {
   durationMs: number;
 }
 
-/** POST /sign — fiscalize the ReceiptRequest. */
 export async function signReceipt(receiptJson: string): Promise<MiddlewareResponse> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -48,13 +43,6 @@ export async function signReceipt(receiptJson: string): Promise<MiddlewareRespon
   };
 }
 
-/**
- * The middleware attaches the generated AADE InvoicesDoc as a signature on
- * the ReceiptResponse with Caption "mydata-xml" — see
- * SignatureItemFactoryGR.AddMyDataXmlSignature in scu-gr. Find it and return
- * its Data field so we can diff against the pasted input without making a
- * second /journal call.
- */
 export function extractMyDataXmlFromSignResponse(rawBody: string): string | null {
   let parsed: unknown;
   try {

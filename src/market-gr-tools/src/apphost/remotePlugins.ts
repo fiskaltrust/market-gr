@@ -25,4 +25,6 @@ export const remotePluginSources: readonly RemotePluginSource[] = [
   // scripts/copy-plugin.mjs.
   { manifestUrl: 'plugins/qr-to-mydata/manifest.json' },
   { manifestUrl: 'plugins/vat-lookup/manifest.json' },
+  { manifestUrl: 'plugins/mydata-to-fiskaltrust/manifest.json' },
+  { manifestUrl: 'plugins/aade-qr-renderer/manifest.json' },
 ];

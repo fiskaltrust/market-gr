@@ -7,9 +7,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultConsole", "src\KeyVaultConsole\KeyVaultConsole.csproj", "{786436BF-7046-8230-4DF7-2C5583D2DB8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataConverter.Core", "src\market-gr-tools\plugins\MyDataConverter.Core\MyDataConverter.Core.csproj", "{BF8CEBC5-4DBA-45FB-8384-1F04004B8E53}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataConverter.Core", "src\market-gr-tools\plugins\mydata-to-fiskaltrust\dotnet\MyDataConverter.Core\MyDataConverter.Core.csproj", "{BF8CEBC5-4DBA-45FB-8384-1F04004B8E53}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataConverter.Wasm", "src\market-gr-tools\plugins\MyDataConverter.Wasm\MyDataConverter.Wasm.csproj", "{3897DE65-F203-4B47-93D0-C7AA3ABABF95}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyDataConverter.Wasm", "src\market-gr-tools\plugins\mydata-to-fiskaltrust\dotnet\MyDataConverter.Wasm\MyDataConverter.Wasm.csproj", "{3897DE65-F203-4B47-93D0-C7AA3ABABF95}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -14,8 +14,6 @@ export function normalizeXml(raw: string): string {
 
   const parserError = doc.querySelector('parsererror');
   if (parserError) {
-    // Couldn't parse — fall back to the raw text so the user still sees
-    // *something* in the diff. Strip trailing whitespace per line for sanity.
     return raw.replace(/[ \t]+$/gm, '').trim();
   }
 

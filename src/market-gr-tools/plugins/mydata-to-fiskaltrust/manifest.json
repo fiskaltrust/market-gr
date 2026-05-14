@@ -1,0 +1,9 @@
+{
+  "id": "mydata-to-fiskaltrust",
+  "name": "MyData → fiskaltrust ReceiptRequest",
+  "description": "Paste an AADE myDATA InvoicesDoc XML and convert it back into a fiskaltrust.Middleware ReceiptRequest JSON. Runs entirely in the browser via .NET WebAssembly.",
+  "version": "2026.05.1",
+  "entry": "./index.js",
+  "changelog": "./CHANGELOG.md",
+  "apiVersion": 1
+}

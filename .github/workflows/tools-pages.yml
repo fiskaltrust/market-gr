@@ -46,7 +46,14 @@ jobs:
         run: dotnet workload install wasm-tools
 
       - name: Publish MyDataConverter.Wasm
-        run: dotnet publish src/market-gr-tools/plugins/MyDataConverter.Wasm/MyDataConverter.Wasm.csproj -c Release -o artifacts/wasm
+        # The .csproj now lives under the mydata-to-fiskaltrust plugin folder.
+        # `dotnet publish` of a Microsoft.NET.Sdk.WebAssembly project emits the
+        # AppBundle into <output>/wwwroot/_framework, plus a copy of main.js
+        # and index.html at <output>/wwwroot/. We pick those up from there.
+        run: >
+          dotnet publish
+          src/market-gr-tools/plugins/mydata-to-fiskaltrust/dotnet/MyDataConverter.Wasm/MyDataConverter.Wasm.csproj
+          -c Release -o artifacts/wasm
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -81,15 +88,6 @@ jobs:
             echo "No plugin version changes to commit."
           fi
 
-      - name: Copy WASM AppBundle into public/
-        working-directory: src/market-gr-tools
-        env:
-          WASM_APPBUNDLE: ${{ github.workspace }}/artifacts/wasm/wwwroot/_framework/../../wwwroot
-        run: |
-          # `dotnet publish` of a Microsoft.NET.Sdk.WebAssembly project lays the
-          # AppBundle under wwwroot/. Point copy-wasm.mjs at that directory.
-          WASM_APPBUNDLE="$GITHUB_WORKSPACE/artifacts/wasm/wwwroot" npm run wasm:copy
-
       # --- Remote plugins (built standalone, then staged under public/) ---
 
       - name: Build qr-to-mydata plugin
@@ -111,6 +109,34 @@ jobs:
       - name: Stage vat-lookup plugin into public/
         working-directory: src/market-gr-tools
         run: node scripts/copy-plugin.mjs vat-lookup
+
+      - name: Build mydata-to-fiskaltrust plugin (React side)
+        working-directory: src/market-gr-tools/plugins/mydata-to-fiskaltrust
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage mydata-to-fiskaltrust plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs mydata-to-fiskaltrust
+
+      - name: Stage .NET AppBundle alongside mydata-to-fiskaltrust plugin
+        # `dotnet publish` of a Microsoft.NET.Sdk.WebAssembly project lays out
+        # `_framework/` (plus dotnet.js, main.js, index.html, ...) under
+        # wwwroot/. Copy that whole directory verbatim into the plugin's
+        # staged folder so the runtime resolves `./_framework/dotnet.js`
+        # relative to `index.js` at runtime.
+        run: cp -R artifacts/wasm/wwwroot/. src/market-gr-tools/public/plugins/mydata-to-fiskaltrust/
+
+      - name: Build aade-qr-renderer plugin
+        working-directory: src/market-gr-tools/plugins/aade-qr-renderer
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage aade-qr-renderer plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs aade-qr-renderer
 
       - name: Build React app
         working-directory: src/market-gr-tools
