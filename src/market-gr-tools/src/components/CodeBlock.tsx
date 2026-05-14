@@ -1,5 +1,6 @@
-import { type ReactNode, useCallback } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import { registerFormatters } from './formatters';
 
 interface CodeBlockProps {
   /** Code string to display */
@@ -25,10 +26,17 @@ interface CodeBlockProps {
   style?: React.CSSProperties;
 }
 
+/** Slim editor instance interface — avoids pulling in monaco-editor types. */
+interface MonacoEditor {
+  getAction(id: string): { run(): Promise<void> } | null;
+}
+
 /**
  * Monaco-backed code viewer/editor — mirrors the JsonBlock pattern from
  * service-developer-platform but with `language` as a required prop so
- * callers can render JSON, XML, or anything else Monaco supports.
+ * callers can render JSON, XML, or anything else Monaco supports. When the
+ * editor is editable, a tiny "Format" overlay button triggers Monaco's
+ * format-document action (Shift+Alt+F keybinding also works).
  */
 export default function CodeBlock({
   value,
@@ -43,12 +51,24 @@ export default function CodeBlock({
   className,
   style,
 }: CodeBlockProps) {
+  const editorRef = useRef<MonacoEditor | null>(null);
+  const [mounted, setMounted] = useState(false);
+
   const handleChange = useCallback(
     (val: string | undefined) => {
       onChange?.(val ?? '');
     },
     [onChange],
   );
+
+  const handleMount = useCallback((instance: MonacoEditor) => {
+    editorRef.current = instance;
+    setMounted(true);
+  }, []);
+
+  const formatNow = useCallback(() => {
+    void editorRef.current?.getAction('editor.action.formatDocument')?.run();
+  }, []);
 
   const display = !value && !editable && placeholder ? placeholder : value;
 
@@ -61,6 +81,7 @@ export default function CodeBlock({
     overflow: 'hidden',
     border: `1px solid ${error ? '#f8514980' : 'var(--border)'}`,
     background: 'var(--code-bg)',
+    position: 'relative',
   };
 
   return (
@@ -74,6 +95,8 @@ export default function CodeBlock({
           language={language}
           theme="vs-dark"
           height={height}
+          beforeMount={registerFormatters}
+          onMount={handleMount}
           onChange={editable ? handleChange : undefined}
           options={{
             readOnly: !editable,
@@ -102,8 +125,34 @@ export default function CodeBlock({
             automaticLayout: true,
           }}
         />
+        {editable && mounted && (
+          <button
+            type="button"
+            onClick={formatNow}
+            title="Format document (Shift+Alt+F)"
+            style={formatButtonStyle}
+          >
+            Format
+          </button>
+        )}
       </div>
       {footer}
     </div>
   );
 }
+
+const formatButtonStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 6,
+  right: 18,
+  zIndex: 5,
+  background: 'rgba(255,255,255,0.06)',
+  color: '#c8d0d8',
+  border: '1px solid rgba(255,255,255,0.10)',
+  padding: '2px 10px',
+  borderRadius: 4,
+  fontSize: 11,
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+  letterSpacing: 0.2,
+};
