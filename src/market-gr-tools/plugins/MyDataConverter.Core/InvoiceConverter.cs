@@ -142,7 +142,14 @@ public static class InvoiceConverter
             Amount = gross,
             VATRate = vatRate,
             VATAmount = vat,
-            Description = row.itemDescr,
+            // ChargeItem.Description is required by the middleware but itemDescr
+            // is optional in myData. Fall back to itemCode, then to a generic
+            // "Line N" label, so a non-empty description is always emitted.
+            Description = !string.IsNullOrWhiteSpace(row.itemDescr)
+                ? row.itemDescr
+                : !string.IsNullOrWhiteSpace(row.itemCode)
+                    ? row.itemCode
+                    : $"Line {row.lineNumber}",
             ProductNumber = row.itemCode,
             Unit = MapMeasurementUnit(row.measurementUnitSpecified ? row.measurementUnit : 1),
             ftChargeItemCase = chargeCase,
