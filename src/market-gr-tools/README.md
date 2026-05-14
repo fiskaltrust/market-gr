@@ -16,12 +16,12 @@ them via hash links. New tools register themselves in
 ## Local development
 
 The React app loads a .NET 9 WebAssembly bundle produced by
-`src/MyDataConverter.Wasm`. You need both pieces to run locally.
+`plugins/MyDataConverter.Wasm`. You need both pieces to run locally.
 
 ```pwsh
 # 1. Build the WASM AppBundle (requires the wasm-tools workload):
 dotnet workload install wasm-tools   # one-time, needs admin on Windows
-dotnet publish ../MyDataConverter.Wasm -c Release
+dotnet publish plugins/MyDataConverter.Wasm -c Release
 
 # 2. Copy the AppBundle into this project's public/ folder:
 npm install

@@ -70,6 +70,19 @@ public partial class Interop
         return node;
     }
 
+    [JSExport]
+    public static string Validate(string xml)
+    {
+        var issues = XmlValidator.Validate(xml);
+        return JsonSerializer.Serialize(issues.Select(i => new
+        {
+            severity = i.Severity.ToString().ToLowerInvariant(),
+            line = i.LineNumber,
+            column = i.LinePosition,
+            message = i.Message,
+        }));
+    }
+
     private static InvoicesDoc ParseInvoicesDoc(string xml)
     {
         var serializer = new XmlSerializer(typeof(InvoicesDoc));

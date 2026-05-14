@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { loadConverter } from './wasmLoader';
+import { loadConverter, type ConverterApi, type ValidationIssue } from './wasmLoader';
 import { DiffView } from './DiffView';
 import {
   type MiddlewareResponse,
@@ -21,8 +21,8 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
     </invoiceHeader>
     <invoiceDetails>
       <lineNumber>1</lineNumber>
-      <quantity>2</quantity>
       <itemDescr>Sample item</itemDescr>
+      <quantity>2</quantity>
       <netValue>100.00</netValue>
       <vatCategory>1</vatCategory>
       <vatAmount>24.00</vatAmount>
@@ -50,7 +50,7 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 
 type ConverterState =
   | { kind: 'loading' }
-  | { kind: 'ready'; convert: (xml: string) => string }
+  | { kind: 'ready'; api: ConverterApi }
   | { kind: 'error'; message: string };
 
 interface ValidationState {
@@ -68,13 +68,14 @@ export default function MyDataToFiskaltrust() {
   const [xml, setXml] = useState(SAMPLE_XML);
   const [output, setOutput] = useState('');
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [xsdIssues, setXsdIssues] = useState<ValidationIssue[] | null>(null);
   const [validation, setValidation] = useState<ValidationState>({ busy: false });
 
   useEffect(() => {
     let cancelled = false;
     loadConverter()
-      .then((convert) => {
-        if (!cancelled) setConverter({ kind: 'ready', convert });
+      .then((api) => {
+        if (!cancelled) setConverter({ kind: 'ready', api });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -94,7 +95,15 @@ export default function MyDataToFiskaltrust() {
     setErrorText(null);
     setValidation({ busy: false });
     try {
-      const json = converter.convert(xml);
+      setXsdIssues(converter.api.validate(xml));
+    } catch (err: unknown) {
+      // Validation failure shouldn't block conversion — surface it but proceed.
+      setXsdIssues([
+        { severity: 'error', line: 0, column: 0, message: err instanceof Error ? err.message : String(err) },
+      ]);
+    }
+    try {
+      const json = converter.api.convert(xml);
       setOutput(json);
     } catch (err: unknown) {
       setErrorText(err instanceof Error ? err.message : String(err));
@@ -152,7 +161,7 @@ export default function MyDataToFiskaltrust() {
         <button className="btn btn-secondary" onClick={() => setXml(SAMPLE_XML)}>
           Load sample
         </button>
-        <button className="btn btn-secondary" onClick={() => { setXml(''); setOutput(''); setErrorText(null); setValidation({ busy: false }); }}>
+        <button className="btn btn-secondary" onClick={() => { setXml(''); setOutput(''); setErrorText(null); setValidation({ busy: false }); setXsdIssues(null); }}>
           Clear
         </button>
         <button className="btn btn-secondary" onClick={copyOutput} disabled={!output}>
@@ -189,6 +198,8 @@ export default function MyDataToFiskaltrust() {
           <pre>{errorText ? `// Error\n${errorText}` : output || '// click Convert'}</pre>
         </div>
       </div>
+
+      {xsdIssues && <XsdIssuesPanel issues={xsdIssues} />}
 
       <section style={{ marginTop: 24 }}>
         <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Validate against the Greek Middleware</h3>
@@ -273,4 +284,38 @@ function tryPretty(body: string): string {
     }
   }
   return body;
+}
+
+function XsdIssuesPanel({ issues }: { issues: ValidationIssue[] }) {
+  if (issues.length === 0) {
+    return (
+      <div style={{ marginTop: 16, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'rgba(46,160,67,0.10)', color: '#2ea043', fontSize: 13 }}>
+        XSD validation passed — input matches AADE myDATA v1.0.12.
+      </div>
+    );
+  }
+
+  const errors = issues.filter((i) => i.severity === 'error').length;
+  const warnings = issues.length - errors;
+
+  return (
+    <div style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg-elev)', fontSize: 13, fontWeight: 600 }}>
+        XSD validation — {errors} error{errors === 1 ? '' : 's'}{warnings ? `, ${warnings} warning${warnings === 1 ? '' : 's'}` : ''}
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontFamily: 'JetBrains Mono, Consolas, monospace', fontSize: 12, lineHeight: 1.5 }}>
+        {issues.map((issue, i) => (
+          <li key={i} style={{ display: 'flex', gap: 12, padding: '6px 12px', borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
+            <span style={{ color: issue.severity === 'error' ? '#f85149' : '#d29922', minWidth: 56, fontWeight: 600 }}>
+              {issue.severity}
+            </span>
+            <span style={{ color: 'var(--fg-muted)', minWidth: 60 }}>
+              {issue.line ? `${issue.line}:${issue.column}` : '—'}
+            </span>
+            <span>{issue.message}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }

@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Scheme\*.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="fiskaltrust.interface" Version="1.3.78-rc1-25294-86170" />
     <!-- fiskaltrust.interface has [JsonConverter] attributes that lazily load
          Newtonsoft.Json at runtime. The package is pulled in transitively but

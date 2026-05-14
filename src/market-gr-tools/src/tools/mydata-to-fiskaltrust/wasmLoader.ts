@@ -15,6 +15,7 @@ interface DotnetExports {
     Wasm: {
       Interop: {
         Convert(xml: string): string;
+        Validate(xml: string): string;
       };
     };
   };
@@ -25,21 +26,36 @@ type DotnetEntry = {
   withApplicationArguments(...args: string[]): DotnetEntry;
 };
 
-let runtimePromise: Promise<(xml: string) => string> | null = null;
+export interface ValidationIssue {
+  severity: 'error' | 'warning';
+  line: number;
+  column: number;
+  message: string;
+}
 
-export function loadConverter(): Promise<(xml: string) => string> {
+export interface ConverterApi {
+  convert: (xml: string) => string;
+  validate: (xml: string) => ValidationIssue[];
+}
+
+let runtimePromise: Promise<ConverterApi> | null = null;
+
+export function loadConverter(): Promise<ConverterApi> {
   if (!runtimePromise) {
     runtimePromise = initialize();
   }
   return runtimePromise;
 }
 
-async function initialize(): Promise<(xml: string) => string> {
+async function initialize(): Promise<ConverterApi> {
   const dotnetUrl = `${import.meta.env.BASE_URL}mydataconverter/_framework/dotnet.js`;
   const mod = (await import(/* @vite-ignore */ dotnetUrl)) as { dotnet: DotnetEntry };
 
   const runtime = await mod.dotnet.withApplicationArguments().create();
   const config = runtime.getConfig();
   const exports = await runtime.getAssemblyExports(config.mainAssemblyName);
-  return (xml) => exports.MyDataConverter.Wasm.Interop.Convert(xml);
+  return {
+    convert: (xml) => exports.MyDataConverter.Wasm.Interop.Convert(xml),
+    validate: (xml) => JSON.parse(exports.MyDataConverter.Wasm.Interop.Validate(xml)) as ValidationIssue[],
+  };
 }

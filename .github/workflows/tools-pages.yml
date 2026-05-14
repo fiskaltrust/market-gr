@@ -5,8 +5,6 @@ on:
     branches:
       - main
     paths:
-      - "src/MyDataConverter.Core/**"
-      - "src/MyDataConverter.Wasm/**"
       - "src/market-gr-tools/**"
       - ".github/workflows/tools-pages.yml"
       - "global.json"
@@ -14,8 +12,6 @@ on:
     branches:
       - main
     paths:
-      - "src/MyDataConverter.Core/**"
-      - "src/MyDataConverter.Wasm/**"
       - "src/market-gr-tools/**"
       - ".github/workflows/tools-pages.yml"
       - "global.json"
@@ -50,7 +46,7 @@ jobs:
         run: dotnet workload install wasm-tools
 
       - name: Publish MyDataConverter.Wasm
-        run: dotnet publish src/MyDataConverter.Wasm/MyDataConverter.Wasm.csproj -c Release -o artifacts/wasm
+        run: dotnet publish src/market-gr-tools/plugins/MyDataConverter.Wasm/MyDataConverter.Wasm.csproj -c Release -o artifacts/wasm
 
       - name: Setup Node
         uses: actions/setup-node@v4
