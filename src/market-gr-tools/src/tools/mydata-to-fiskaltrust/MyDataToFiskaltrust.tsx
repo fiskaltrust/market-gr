@@ -3,8 +3,7 @@ import { loadConverter, type ConverterApi, type ValidationIssue } from './wasmLo
 import { DiffView } from './DiffView';
 import {
   type MiddlewareResponse,
-  extractInvoicesDocXml,
-  fetchAadeJournal,
+  extractMyDataXmlFromSignResponse,
   signReceipt,
 } from './middleware';
 import { type DiffResult, diffXml } from './xmlDiff';
@@ -57,8 +56,6 @@ interface ValidationState {
   busy: boolean;
   signResponse?: MiddlewareResponse;
   signError?: string;
-  journalResponse?: MiddlewareResponse;
-  journalError?: string;
   generatedXml?: string;
   diff?: DiffResult;
 }
@@ -121,34 +118,21 @@ export default function MyDataToFiskaltrust() {
     setValidation({ busy: true });
     try {
       const signResponse = await signReceipt(output);
-      setValidation({ busy: false, signResponse });
+      const generatedXml = signResponse.ok
+        ? extractMyDataXmlFromSignResponse(signResponse.body)
+        : null;
+      const diff = generatedXml ? diffXml(xml, generatedXml) : undefined;
+      setValidation({
+        busy: false,
+        signResponse,
+        generatedXml: generatedXml ?? undefined,
+        diff,
+      });
     } catch (err: unknown) {
       setValidation({
         busy: false,
         signError: err instanceof Error ? err.message : String(err),
       });
-    }
-  };
-
-  const fetchAndDiff = async () => {
-    setValidation((v) => ({ ...v, busy: true, journalError: undefined }));
-    try {
-      const journalResponse = await fetchAadeJournal();
-      const generatedXml = extractInvoicesDocXml(journalResponse.body);
-      const diff = generatedXml ? diffXml(xml, generatedXml) : undefined;
-      setValidation((v) => ({
-        ...v,
-        busy: false,
-        journalResponse,
-        generatedXml: generatedXml ?? undefined,
-        diff,
-      }));
-    } catch (err: unknown) {
-      setValidation((v) => ({
-        ...v,
-        busy: false,
-        journalError: err instanceof Error ? err.message : String(err),
-      }));
     }
   };
 
@@ -204,9 +188,9 @@ export default function MyDataToFiskaltrust() {
       <section style={{ marginTop: 24 }}>
         <h3 style={{ fontSize: 16, margin: '0 0 8px' }}>Validate against the Greek Middleware</h3>
         <p style={{ fontSize: 13, color: 'var(--fg-muted)', margin: '0 0 12px' }}>
-          Sends the converted ReceiptRequest to the shared GR sandbox cashbox via <code>/sign</code>,
-          then pulls the AADE myDATA payload back via <code>/journal</code> and diffs it against
-          the XML you pasted above.
+          Sends the converted ReceiptRequest to the shared GR sandbox cashbox via <code>/sign</code>.
+          The middleware attaches the generated AADE InvoicesDoc as a <code>mydata-xml</code>
+          signature on the response — we pull it from there and diff against the XML you pasted.
         </p>
 
         <div className="toolbar">
@@ -218,14 +202,6 @@ export default function MyDataToFiskaltrust() {
           >
             Send to Middleware
           </button>
-          <button
-            className="btn btn-secondary"
-            onClick={fetchAndDiff}
-            disabled={!validation.signResponse?.ok || validation.busy}
-            title={!validation.signResponse?.ok ? 'Sign succeeds first' : ''}
-          >
-            Fetch generated mydata &amp; diff
-          </button>
           {validation.busy && <span className="status">Working…</span>}
         </div>
 
@@ -236,24 +212,17 @@ export default function MyDataToFiskaltrust() {
           <ResponseBlock title={`/sign response — HTTP ${validation.signResponse.status} (${validation.signResponse.durationMs}ms)`} response={validation.signResponse} />
         )}
 
-        {validation.journalError && (
-          <p className="status error" style={{ marginTop: 12 }}>Journal request failed: {validation.journalError}</p>
-        )}
-        {validation.journalResponse && (
-          <ResponseBlock title={`/journal AADE response — HTTP ${validation.journalResponse.status} (${validation.journalResponse.durationMs}ms)`} response={validation.journalResponse} collapsedByDefault />
-        )}
-
         {validation.diff && (
           <div style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
-              Diff: pasted XML vs middleware-generated XML
+              Diff: pasted XML vs middleware-generated XML (from <code>ftSignatures[Caption=mydata-xml]</code>)
             </div>
             <DiffView diff={validation.diff} />
           </div>
         )}
-        {validation.journalResponse && !validation.generatedXml && !validation.journalError && (
+        {validation.signResponse?.ok && !validation.generatedXml && (
           <p className="status" style={{ marginTop: 12 }}>
-            Couldn't extract an <code>InvoicesDoc</code> from the journal response. Inspect the raw body above.
+            No <code>mydata-xml</code> signature in the response. Inspect <code>ftSignatures</code> above.
           </p>
         )}
       </section>
