@@ -6,7 +6,7 @@ import {
   extractMyDataXmlFromSignResponse,
   signReceipt,
 } from './middleware';
-import { type DiffResult, diffXml } from './xmlDiff';
+import CodeBlock from '../../components/CodeBlock';
 
 const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <InvoicesDoc xmlns="http://www.aade.gr/myDATA/invoice/v1.0">
@@ -57,7 +57,6 @@ interface ValidationState {
   signResponse?: MiddlewareResponse;
   signError?: string;
   generatedXml?: string;
-  diff?: DiffResult;
 }
 
 export default function MyDataToFiskaltrust() {
@@ -121,12 +120,10 @@ export default function MyDataToFiskaltrust() {
       const generatedXml = signResponse.ok
         ? extractMyDataXmlFromSignResponse(signResponse.body)
         : null;
-      const diff = generatedXml ? diffXml(xml, generatedXml) : undefined;
       setValidation({
         busy: false,
         signResponse,
         generatedXml: generatedXml ?? undefined,
-        diff,
       });
     } catch (err: unknown) {
       setValidation({
@@ -135,6 +132,8 @@ export default function MyDataToFiskaltrust() {
       });
     }
   };
+
+  const jsonViewBody = errorText ? `// Error\n${errorText}` : output;
 
   return (
     <>
@@ -166,11 +165,13 @@ export default function MyDataToFiskaltrust() {
             <span>InvoicesDoc XML</span>
             <span>{xml.length.toLocaleString()} chars</span>
           </div>
-          <textarea
+          <CodeBlock
             value={xml}
-            onChange={(e) => setXml(e.target.value)}
-            spellCheck={false}
-            placeholder="Paste your AADE myDATA InvoicesDoc XML here…"
+            language="xml"
+            editable
+            onChange={setXml}
+            style={{ flex: 1 }}
+            minHeight="100%"
           />
         </div>
 
@@ -179,7 +180,13 @@ export default function MyDataToFiskaltrust() {
             <span>fiskaltrust ReceiptRequest JSON</span>
             <span>{output.length.toLocaleString()} chars</span>
           </div>
-          <pre>{errorText ? `// Error\n${errorText}` : output || '// click Convert'}</pre>
+          <CodeBlock
+            value={jsonViewBody}
+            language="json"
+            placeholder="// click Convert"
+            style={{ flex: 1 }}
+            minHeight="100%"
+          />
         </div>
       </div>
 
@@ -212,12 +219,12 @@ export default function MyDataToFiskaltrust() {
           <ResponseBlock title={`/sign response — HTTP ${validation.signResponse.status} (${validation.signResponse.durationMs}ms)`} response={validation.signResponse} />
         )}
 
-        {validation.diff && (
+        {validation.generatedXml && (
           <div style={{ marginTop: 16, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
               Diff: pasted XML vs middleware-generated XML (from <code>ftSignatures[Caption=mydata-xml]</code>)
             </div>
-            <DiffView diff={validation.diff} />
+            <DiffView original={xml} generated={validation.generatedXml} />
           </div>
         )}
         {validation.signResponse?.ok && !validation.generatedXml && (
@@ -236,9 +243,13 @@ function ResponseBlock({ title, response, collapsedByDefault }: { title: string;
       <summary style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: 'var(--bg-elev)' }}>
         {title}
       </summary>
-      <pre style={{ margin: 0, padding: 12, fontFamily: 'JetBrains Mono, Consolas, monospace', fontSize: 12, lineHeight: 1.45, maxHeight: 360, overflow: 'auto', background: 'var(--code-bg)', color: 'var(--code-fg)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-        {tryPretty(response.body)}
-      </pre>
+      <div style={{ padding: 8, background: 'var(--code-bg)' }}>
+        <CodeBlock
+          value={tryPretty(response.body)}
+          language="json"
+          minHeight={240}
+        />
+      </div>
     </details>
   );
 }

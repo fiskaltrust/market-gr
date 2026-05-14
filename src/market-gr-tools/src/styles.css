@@ -145,22 +145,6 @@ body { background: var(--bg); color: var(--fg); }
   color: var(--fg-muted);
 }
 
-.editor textarea, .editor pre {
-  flex: 1;
-  margin: 0;
-  border: 0;
-  outline: none;
-  resize: none;
-  background: var(--code-bg);
-  color: var(--code-fg);
-  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 12px;
-  white-space: pre;
-  overflow: auto;
-}
-
 .toolbar {
   display: flex;
   gap: 8px;

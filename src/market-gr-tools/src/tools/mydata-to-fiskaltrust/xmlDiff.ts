@@ -1,10 +1,11 @@
-import { diffLines, type Change } from 'diff';
-
 /**
  * Normalizes an InvoicesDoc XML so cosmetic differences (whitespace,
  * attribute order, comments, empty elements) don't show up in the diff. The
  * normalized output is a re-serialized DOM with consistent indentation and
  * sorted attributes.
+ *
+ * Monaco's DiffEditor handles diffing internally — this module is only here
+ * to pre-normalize the two sides so the diff doesn't fixate on formatting.
  */
 export function normalizeXml(raw: string): string {
   if (!raw.trim()) return '';
@@ -72,27 +73,4 @@ function escapeText(s: string): string {
 
 function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-}
-
-export interface DiffResult {
-  changes: Change[];
-  identical: boolean;
-  /** Counts of line-add / line-remove changes (whitespace-only ignored). */
-  added: number;
-  removed: number;
-}
-
-export function diffXml(originalRaw: string, generatedRaw: string): DiffResult {
-  const original = normalizeXml(originalRaw);
-  const generated = normalizeXml(generatedRaw);
-  const changes = diffLines(original, generated);
-
-  let added = 0;
-  let removed = 0;
-  for (const c of changes) {
-    if (c.added) added += c.count ?? 0;
-    if (c.removed) removed += c.count ?? 0;
-  }
-
-  return { changes, identical: added === 0 && removed === 0, added, removed };
 }
