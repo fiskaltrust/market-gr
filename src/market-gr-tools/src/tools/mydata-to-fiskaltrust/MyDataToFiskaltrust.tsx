@@ -71,6 +71,21 @@ export default function MyDataToFiskaltrust() {
   const [validation, setValidation] = useState<ValidationState>({ busy: false });
 
   useEffect(() => {
+    // Pick up an XML payload handed over by the qr-to-mydata plugin. We do
+    // this once on mount and immediately clear the key so a later remount
+    // doesn't overwrite a user edit.
+    try {
+      const handoff = sessionStorage.getItem('qr-to-mydata:lastXml');
+      if (handoff) {
+        sessionStorage.removeItem('qr-to-mydata:lastXml');
+        setXml(handoff);
+      }
+    } catch {
+      // sessionStorage may be unavailable (private mode) — ignore.
+    }
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     loadConverter()
       .then((api) => {
