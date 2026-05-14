@@ -138,6 +138,16 @@ jobs:
         working-directory: src/market-gr-tools
         run: node scripts/copy-plugin.mjs aade-qr-renderer
 
+      - name: Build receipt-cookbook plugin
+        working-directory: src/market-gr-tools/plugins/receipt-cookbook
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage receipt-cookbook plugin into public/
+        working-directory: src/market-gr-tools
+        run: node scripts/copy-plugin.mjs receipt-cookbook
+
       - name: Build React app
         working-directory: src/market-gr-tools
         env:
