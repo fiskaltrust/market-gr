@@ -60,7 +60,7 @@ public static class InvoiceConverter
             .ToList();
 
         var payItems = (invoice.paymentMethods ?? Array.Empty<PaymentMethodDetailType>())
-            .Select(p => MapPayItem(p, sign))
+            .SelectMany(p => MapPayItem(p, sign))
             .ToList();
 
         var issueDate = invoice.invoiceHeader.issueDate;
@@ -156,18 +156,41 @@ public static class InvoiceConverter
         };
     }
 
-    private static PayItem MapPayItem(PaymentMethodDetailType pm, decimal sign)
+    /// <summary>
+    /// myData stores the full amount (incl. tip) on a single PaymentMethodDetail.
+    /// The fiskaltrust model expects the tip as a separate PayItem positioned
+    /// immediately after the main payment, with the same payment case plus the
+    /// <see cref="PayItemCaseFlags.Tip"/> flag — that's how
+    /// <c>ReceiptRequestExtensions.GetGroupedPayItems</c> on the middleware side
+    /// re-pairs them. We mirror that here.
+    /// </summary>
+    private static IEnumerable<PayItem> MapPayItem(PaymentMethodDetailType pm, decimal sign)
     {
-        var payCase = PayItemCase.UnknownPaymentType
+        var (paymentCase, descriptionHint) = MapPaymentType(pm.type, pm.paymentMethodInfo);
+        var basePayCase = PayItemCase.UnknownPaymentType
             .WithCountry(CountryCode)
-            .WithCase(MapPaymentType(pm.type));
+            .WithCase(paymentCase);
 
-        return new PayItem
+        var description = string.IsNullOrEmpty(pm.paymentMethodInfo) ? descriptionHint : pm.paymentMethodInfo;
+        var hasTip = pm.tipAmountSpecified && pm.tipAmount > 0m;
+        var mainAmount = (hasTip ? pm.amount - pm.tipAmount : pm.amount) * sign;
+
+        yield return new PayItem
         {
-            Amount = pm.amount * sign,
-            Description = pm.paymentMethodInfo,
-            ftPayItemCase = payCase,
+            Amount = mainAmount,
+            Description = description,
+            ftPayItemCase = basePayCase,
         };
+
+        if (hasTip)
+        {
+            yield return new PayItem
+            {
+                Amount = pm.tipAmount * sign,
+                Description = "Tip",
+                ftPayItemCase = (PayItemCase) ((long) basePayCase | (long) PayItemCaseFlags.Tip),
+            };
+        }
     }
 
     private static (decimal vatRate, ChargeItemCase vatBits) MapVatCategory(int vatCategory)
@@ -188,18 +211,31 @@ public static class InvoiceConverter
         };
     }
 
-    private static PayItemCase MapPaymentType(int type) => type switch
+    /// <summary>
+    /// Reverse of <c>AADEMappings.GetPaymentType</c> in fiskaltrust.Middleware.SCU.GR.MyData.
+    /// The forward mapping is many-to-one, so we pick the inverse that round-trips
+    /// cleanly through the middleware: type 1/6/8 all come back as SEPATransfer,
+    /// but with a description hint that makes <c>GetSEPATransferPaymentType</c> route
+    /// back to the same myData code (Iris keyword → 8, "RF code payment (Web Banking)"
+    /// → 6, otherwise → 1). PosEPos (7) maps to a credit card payment because the
+    /// middleware accepts either credit or debit and credit is the more common case.
+    /// </summary>
+    private static (PayItemCase payCase, string? descriptionHint) MapPaymentType(int type, string? existingDescription)
     {
-        1 => PayItemCase.SEPATransfer,
-        2 => PayItemCase.OtherBankTransfer,
-        3 => PayItemCase.CashPayment,
-        4 => PayItemCase.VoucherPaymentCouponVoucherByMoneyValue,
-        5 => PayItemCase.AccountsReceivable,
-        6 => PayItemCase.SEPATransfer,
-        7 => PayItemCase.CreditCardPayment,
-        8 => PayItemCase.SEPATransfer,
-        _ => PayItemCase.UnknownPaymentType,
-    };
+        var hint = existingDescription;
+        return type switch
+        {
+            1 => (PayItemCase.SEPATransfer, hint),
+            2 => (PayItemCase.OtherBankTransfer, hint),
+            3 => (PayItemCase.CashPayment, hint),
+            4 => (PayItemCase.CrossedCheque, hint),
+            5 => (PayItemCase.AccountsReceivable, hint),
+            6 => (PayItemCase.SEPATransfer, hint ?? "RF code payment (Web Banking)"),
+            7 => (PayItemCase.CreditCardPayment, hint),
+            8 => (PayItemCase.SEPATransfer, hint ?? "IRIS"),
+            _ => (PayItemCase.UnknownPaymentType, hint),
+        };
+    }
 
     private static string MapMeasurementUnit(int unit) => unit switch
     {

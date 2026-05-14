@@ -28,8 +28,11 @@ const SAMPLE_XML = `<?xml version="1.0" encoding="UTF-8"?>
       <vatAmount>24.00</vatAmount>
     </invoiceDetails>
     <paymentMethods>
-      <type>3</type>
-      <amount>124.00</amount>
+      <paymentMethodDetails>
+        <type>3</type>
+        <amount>124.00</amount>
+        <paymentMethodInfo>Cash</paymentMethodInfo>
+      </paymentMethodDetails>
     </paymentMethods>
     <invoiceSummary>
       <totalNetValue>100.00</totalNetValue>
