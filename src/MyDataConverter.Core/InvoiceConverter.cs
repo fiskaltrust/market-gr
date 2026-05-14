@@ -74,8 +74,10 @@ public static class InvoiceConverter
 
         return new ReceiptRequest
         {
-            ftCashBoxID = Guid.Empty,
-            ftPosSystemId = Guid.Empty,
+            // ftCashBoxID and ftPosSystemId are intentionally left at the
+            // struct default (Guid.Empty) and stripped from the serialized
+            // output by Interop.Convert — the POS system fills them in at
+            // send time, so emitting an empty GUID is misleading.
             ftReceiptCase = receiptCase,
             cbTerminalID = "1",
             Currency = MapCurrency(invoice.invoiceHeader),
