@@ -83,18 +83,15 @@ jobs:
         with:
           path: src/market-gr-tools/dist
 
-  # To enable deployment to GitHub Pages, uncomment the job below AND enable
-  # Pages in repo settings with source set to "GitHub Actions".
-  #
-  # deploy:
-  #   name: Deploy to GitHub Pages
-  #   needs: build
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: github-pages
-  #     url: ${{ steps.deployment.outputs.page_url }}
-  #   steps:
-  #     - name: Deploy
-  #       id: deployment
-  #       uses: actions/deploy-pages@v4
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
