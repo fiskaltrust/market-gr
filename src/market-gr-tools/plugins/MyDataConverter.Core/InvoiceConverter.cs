@@ -159,12 +159,15 @@ public static class InvoiceConverter
     /// </summary>
     private static IEnumerable<PayItem> MapPayItem(PaymentMethodDetailType pm, decimal sign)
     {
-        var (paymentCase, descriptionHint) = MapPaymentType(pm.type, pm.paymentMethodInfo);
+        var (paymentCase, defaultDescription) = MapPaymentType(pm.type);
         var basePayCase = PayItemCase.UnknownPaymentType
             .WithCountry(CountryCode)
             .WithCase(paymentCase);
 
-        var description = string.IsNullOrEmpty(pm.paymentMethodInfo) ? descriptionHint : pm.paymentMethodInfo;
+        // PayItem.Description is required by the middleware but
+        // paymentMethodInfo is optional in myData. Fall back to a payment-type-
+        // derived label so the middleware always sees a non-empty value.
+        var description = string.IsNullOrWhiteSpace(pm.paymentMethodInfo) ? defaultDescription : pm.paymentMethodInfo;
         var hasTip = pm.tipAmountSpecified && pm.tipAmount > 0m;
         var mainAmount = (hasTip ? pm.amount - pm.tipAmount : pm.amount) * sign;
 
@@ -212,21 +215,24 @@ public static class InvoiceConverter
     /// back to the same myData code (Iris keyword → 8, "RF code payment (Web Banking)"
     /// → 6, otherwise → 1). PosEPos (7) maps to a credit card payment because the
     /// middleware accepts either credit or debit and credit is the more common case.
+    ///
+    /// The default description is always non-empty so the middleware-required
+    /// <see cref="PayItem.Description"/> field has a value even when the source
+    /// <c>paymentMethodInfo</c> is missing.
     /// </summary>
-    private static (PayItemCase payCase, string? descriptionHint) MapPaymentType(int type, string? existingDescription)
+    private static (PayItemCase payCase, string defaultDescription) MapPaymentType(int type)
     {
-        var hint = existingDescription;
         return type switch
         {
-            1 => (PayItemCase.SEPATransfer, hint),
-            2 => (PayItemCase.OtherBankTransfer, hint),
-            3 => (PayItemCase.CashPayment, hint),
-            4 => (PayItemCase.CrossedCheque, hint),
-            5 => (PayItemCase.AccountsReceivable, hint),
-            6 => (PayItemCase.SEPATransfer, hint ?? "RF code payment (Web Banking)"),
-            7 => (PayItemCase.CreditCardPayment, hint),
-            8 => (PayItemCase.SEPATransfer, hint ?? "IRIS"),
-            _ => (PayItemCase.UnknownPaymentType, hint),
+            1 => (PayItemCase.SEPATransfer, "Bank transfer"),
+            2 => (PayItemCase.OtherBankTransfer, "Foreign bank transfer"),
+            3 => (PayItemCase.CashPayment, "Cash"),
+            4 => (PayItemCase.CrossedCheque, "Check"),
+            5 => (PayItemCase.AccountsReceivable, "On credit"),
+            6 => (PayItemCase.SEPATransfer, "RF code payment (Web Banking)"),
+            7 => (PayItemCase.CreditCardPayment, "Card"),
+            8 => (PayItemCase.SEPATransfer, "IRIS"),
+            _ => (PayItemCase.UnknownPaymentType, "Payment"),
         };
     }
 
