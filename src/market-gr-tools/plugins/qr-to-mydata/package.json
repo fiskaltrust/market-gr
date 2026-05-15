@@ -1,0 +1,20 @@
+{
+  "name": "@market-gr-tools/qr-to-mydata",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "QR -> myDATA plugin, built as an ESM library and loaded at runtime by the market-gr-tools apphost.",
+  "scripts": {
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "jsqr": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.3.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}

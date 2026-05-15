@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>MyDataConverter.Wasm</RootNamespace>
+    <AssemblyName>MyDataConverter.Wasm</AssemblyName>
+    <WasmMainJSPath>main.js</WasmMainJSPath>
+    <NoWarn>CS8618;CS8625;CS8600;CS8601;CS8602;CS8603;CS8604</NoWarn>
+
+    <!-- XmlSerializer relies on reflection. Disable IL trimming to keep it working without
+         shipping XML serializer assemblies. The bundle is bigger but the converter works. -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <TrimMode>copy</TrimMode>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <WasmEnableSIMD>false</WasmEnableSIMD>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyDataConverter.Core\MyDataConverter.Core.csproj" />
+  </ItemGroup>
+
+</Project>

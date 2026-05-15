@@ -1,0 +1,9 @@
+{
+  "id": "receipt-cookbook",
+  "name": "Receipt cookbook",
+  "description": "Pick a Greek receipt scenario (retail cash, retail card, B2B invoice, refund, tip, multi-VAT) and generate a fresh, editable ReceiptRequest JSON ready to send to /sign. Hex case values match the AADE certification examples in the GR middleware test suite.",
+  "version": "2026.05.1",
+  "entry": "./index.js",
+  "changelog": "./CHANGELOG.md",
+  "apiVersion": 1
+}

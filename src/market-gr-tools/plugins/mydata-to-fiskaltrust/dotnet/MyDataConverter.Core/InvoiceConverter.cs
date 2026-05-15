@@ -1,0 +1,318 @@
+using System.Reflection;
+using System.Xml.Serialization;
+using fiskaltrust.ifPOS.v2;
+using fiskaltrust.ifPOS.v2.Cases;
+
+namespace MyDataConverter;
+
+/// <summary>
+/// Converts a MyData <see cref="InvoicesDoc"/> back into one or more fiskaltrust.Middleware
+/// inbound <see cref="ReceiptRequest"/> objects. This is the inverse of
+/// <c>fiskaltrust.Middleware.SCU.GR.MyData.AADEFactory.MapToInvoicesDoc</c>.
+///
+/// The conversion is intentionally lossy. To still guarantee that a round-trip produces an
+/// identical InvoicesDoc, we additionally write a <c>mydataoverride</c> payload that pins
+/// the original invoiceType.
+/// </summary>
+public static class InvoiceConverter
+{
+    // GR + version 2 — matches what's used throughout the SCU code:
+    //   ((ReceiptCase) 0x4752_2000_0000_0000).WithCase(...)
+    private const string CountryCode = "GR";
+
+    public static ReceiptRequest Convert(AadeBookInvoiceType invoice)
+    {
+        var (baseCase, refundFlag, transportFlag) = MapInvoiceType(invoice.invoiceHeader.invoiceType);
+
+        var receiptCase = ReceiptCase.UnknownReceipt0x0000
+            .WithCountry(CountryCode)
+            .WithCase(baseCase);
+
+        if (invoice.invoiceHeader.invoiceType is InvoiceType.Item111 or InvoiceType.Item112
+            or InvoiceType.Item113 or InvoiceType.Item114 or InvoiceType.Item115
+            or InvoiceType.Item84 or InvoiceType.Item85 or InvoiceType.Item93)
+        {
+            receiptCase = receiptCase.WithType(ReceiptCaseType.Receipt);
+        }
+        else if (invoice.invoiceHeader.invoiceType == InvoiceType.Item86)
+        {
+            receiptCase = receiptCase.WithType(ReceiptCaseType.Log);
+        }
+        else
+        {
+            receiptCase = receiptCase.WithType(ReceiptCaseType.Invoice);
+        }
+
+        if (refundFlag)
+        {
+            receiptCase = receiptCase.WithFlag(ReceiptCaseFlags.Refund);
+        }
+        if (transportFlag)
+        {
+            // ReceiptCaseFlagsGR.HasTransportInformation = 0x0000_0000_0400_0000
+            receiptCase = (ReceiptCase) ((long) receiptCase | 0x0000_0000_0400_0000);
+        }
+
+        var sign = refundFlag ? -1m : 1m;
+
+        var chargeItems = (invoice.invoiceDetails ?? Array.Empty<InvoiceRowType>())
+            .Select(row => MapChargeItem(row, sign))
+            .ToList();
+
+        var payItems = (invoice.paymentMethods ?? Array.Empty<PaymentMethodDetailType>())
+            .SelectMany(p => MapPayItem(p, sign))
+            .ToList();
+
+        var totalGross = invoice.invoiceSummary?.totalGrossValue * sign
+                         ?? chargeItems.Sum(c => c.Amount);
+
+        return new ReceiptRequest
+        {
+            // ftCashBoxID and ftPosSystemId are intentionally left at the
+            // struct default (Guid.Empty) and stripped from the serialized
+            // output by Interop.Convert — the POS system fills them in at
+            // send time, so emitting an empty GUID is misleading.
+            ftReceiptCase = receiptCase,
+            cbTerminalID = "1",
+            Currency = MapCurrency(invoice.invoiceHeader),
+            // The middleware re-fiscalises the receipt "now", so the original
+            // invoiceHeader/issueDate is intentionally not propagated.
+            cbReceiptMoment = DateTime.UtcNow,
+            // series + aa from the input are not propagated either — the GR
+            // middleware assigns its own series/serial when signing. We give
+            // each conversion a fresh local reference so the receipt has *some*
+            // POS-level identifier.
+            cbReceiptReference = Guid.NewGuid().ToString(),
+            cbReceiptAmount = totalGross,
+            cbChargeItems = chargeItems,
+            cbPayItems = payItems,
+            cbCustomer = MapCustomer(invoice.counterpart),
+            ftReceiptCaseData = BuildReceiptCaseData(invoice),
+        };
+    }
+
+    private static Currency MapCurrency(InvoiceHeaderType header)
+    {
+        if (header.currencySpecified && Enum.TryParse<Currency>(header.currency.ToString(), out var c))
+        {
+            return c;
+        }
+        return Currency.EUR;
+    }
+
+    private static object? MapCustomer(PartyType? counterpart)
+    {
+        if (counterpart == null)
+        {
+            return null;
+        }
+
+        var country = counterpart.country.ToString();
+        return new
+        {
+            CustomerName = counterpart.name,
+            CustomerVATId = string.IsNullOrEmpty(counterpart.vatNumber)
+                ? null
+                : (counterpart.country == CountryType.GR ? counterpart.vatNumber : country + counterpart.vatNumber),
+            CustomerCountry = country,
+            CustomerStreet = counterpart.address?.street,
+            CustomerHouseNumber = counterpart.address?.number,
+            CustomerZip = counterpart.address?.postalCode,
+            CustomerCity = counterpart.address?.city,
+        };
+    }
+
+    private static ChargeItem MapChargeItem(InvoiceRowType row, decimal sign)
+    {
+        var (vatRate, vatBits) = MapVatCategory(row.vatCategory);
+
+        var net = row.netValue * sign;
+        var vat = row.vatAmount * sign;
+        var gross = net + vat;
+
+        var chargeCase = ChargeItemCase.UnknownService
+            .WithCountry(CountryCode)
+            .WithVat(vatBits)
+            .WithTypeOfService(ChargeItemCaseTypeOfService.UnknownService);
+
+        return new ChargeItem
+        {
+            Position = row.lineNumber,
+            Quantity = row.quantitySpecified ? row.quantity : 1m,
+            Amount = gross,
+            VATRate = vatRate,
+            VATAmount = vat,
+            // ChargeItem.Description is required by the middleware but itemDescr
+            // is optional in myData. Fall back to itemCode, then to a generic
+            // "Line N" label, so a non-empty description is always emitted.
+            Description = !string.IsNullOrWhiteSpace(row.itemDescr)
+                ? row.itemDescr
+                : !string.IsNullOrWhiteSpace(row.itemCode)
+                    ? row.itemCode
+                    : $"Line {row.lineNumber}",
+            ProductNumber = row.itemCode,
+            Unit = MapMeasurementUnit(row.measurementUnitSpecified ? row.measurementUnit : 1),
+            ftChargeItemCase = chargeCase,
+        };
+    }
+
+    /// <summary>
+    /// myData stores the full amount (incl. tip) on a single PaymentMethodDetail.
+    /// The fiskaltrust model expects the tip as a separate PayItem positioned
+    /// immediately after the main payment, with the same payment case plus the
+    /// <see cref="PayItemCaseFlags.Tip"/> flag — that's how
+    /// <c>ReceiptRequestExtensions.GetGroupedPayItems</c> on the middleware side
+    /// re-pairs them. We mirror that here.
+    /// </summary>
+    private static IEnumerable<PayItem> MapPayItem(PaymentMethodDetailType pm, decimal sign)
+    {
+        var (paymentCase, defaultDescription) = MapPaymentType(pm.type);
+        var basePayCase = PayItemCase.UnknownPaymentType
+            .WithCountry(CountryCode)
+            .WithCase(paymentCase);
+
+        // PayItem.Description is required by the middleware but
+        // paymentMethodInfo is optional in myData. Fall back to a payment-type-
+        // derived label so the middleware always sees a non-empty value.
+        var description = string.IsNullOrWhiteSpace(pm.paymentMethodInfo) ? defaultDescription : pm.paymentMethodInfo;
+        var hasTip = pm.tipAmountSpecified && pm.tipAmount > 0m;
+        var mainAmount = (hasTip ? pm.amount - pm.tipAmount : pm.amount) * sign;
+
+        yield return new PayItem
+        {
+            Amount = mainAmount,
+            Description = description,
+            ftPayItemCase = basePayCase,
+        };
+
+        if (hasTip)
+        {
+            yield return new PayItem
+            {
+                Amount = pm.tipAmount * sign,
+                Description = "Tip",
+                ftPayItemCase = (PayItemCase) ((long) basePayCase | (long) PayItemCaseFlags.Tip),
+            };
+        }
+    }
+
+    private static (decimal vatRate, ChargeItemCase vatBits) MapVatCategory(int vatCategory)
+    {
+        return vatCategory switch
+        {
+            1 => (24m, ChargeItemCase.NormalVatRate),
+            2 => (13m, ChargeItemCase.DiscountedVatRate1),
+            3 => (6m, ChargeItemCase.DiscountedVatRate1),
+            4 => (17m, ChargeItemCase.DiscountedVatRate1),
+            5 => (9m, ChargeItemCase.DiscountedVatRate1),
+            6 => (4m, ChargeItemCase.SuperReducedVatRate1),
+            7 => (0m, ChargeItemCase.ZeroVatRate),
+            8 => (0m, ChargeItemCase.NotTaxable),
+            9 => (3m, ChargeItemCase.ParkingVatRate),
+            10 => (4m, ChargeItemCase.ParkingVatRate),
+            _ => (0m, ChargeItemCase.UnknownService),
+        };
+    }
+
+    /// <summary>
+    /// Reverse of <c>AADEMappings.GetPaymentType</c> in fiskaltrust.Middleware.SCU.GR.MyData.
+    /// The forward mapping is many-to-one, so we pick the inverse that round-trips
+    /// cleanly through the middleware: type 1/6/8 all come back as SEPATransfer,
+    /// but with a description hint that makes <c>GetSEPATransferPaymentType</c> route
+    /// back to the same myData code (Iris keyword → 8, "RF code payment (Web Banking)"
+    /// → 6, otherwise → 1). PosEPos (7) maps to a credit card payment because the
+    /// middleware accepts either credit or debit and credit is the more common case.
+    ///
+    /// The default description is always non-empty so the middleware-required
+    /// <see cref="PayItem.Description"/> field has a value even when the source
+    /// <c>paymentMethodInfo</c> is missing.
+    /// </summary>
+    private static (PayItemCase payCase, string defaultDescription) MapPaymentType(int type)
+    {
+        return type switch
+        {
+            1 => (PayItemCase.SEPATransfer, "Bank transfer"),
+            2 => (PayItemCase.OtherBankTransfer, "Foreign bank transfer"),
+            3 => (PayItemCase.CashPayment, "Cash"),
+            4 => (PayItemCase.CrossedCheque, "Check"),
+            5 => (PayItemCase.AccountsReceivable, "On credit"),
+            6 => (PayItemCase.SEPATransfer, "RF code payment (Web Banking)"),
+            7 => (PayItemCase.CreditCardPayment, "Card"),
+            8 => (PayItemCase.SEPATransfer, "IRIS"),
+            _ => (PayItemCase.UnknownPaymentType, "Payment"),
+        };
+    }
+
+    private static string MapMeasurementUnit(int unit) => unit switch
+    {
+        1 => "Pieces",
+        2 => "Kg",
+        3 => "Litres",
+        4 => "Meters",
+        5 => "SquareMeters",
+        6 => "CubicMeters",
+        7 => "OtherPieces",
+        _ => "Pieces",
+    };
+
+    /// <summary>
+    /// Picks a sensible base ReceiptCase for the given invoice type. The exact invoice type
+    /// is always pinned again via the mydataoverride to guarantee round-tripping.
+    /// </summary>
+    private static (ReceiptCase baseCase, bool refund, bool transport) MapInvoiceType(InvoiceType invoiceType)
+    {
+        return invoiceType switch
+        {
+            InvoiceType.Item84 => (ReceiptCase.PaymentTransfer0x0002, false, false),
+            InvoiceType.Item85 => (ReceiptCase.PaymentTransfer0x0002, true, false),
+            InvoiceType.Item86 => (ReceiptCase.Order0x3004, false, false),
+            InvoiceType.Item93 => (ReceiptCase.DeliveryNote0x0005, false, true),
+
+            InvoiceType.Item111 => (ReceiptCase.PointOfSaleReceipt0x0001, false, false),
+            InvoiceType.Item112 => (ReceiptCase.PointOfSaleReceipt0x0001, false, false),
+            InvoiceType.Item113 => (ReceiptCase.PointOfSaleReceipt0x0001, false, false),
+            InvoiceType.Item114 => (ReceiptCase.PointOfSaleReceipt0x0001, true, false),
+            InvoiceType.Item115 => (ReceiptCase.PointOfSaleReceipt0x0001, false, false),
+
+            // Refund invoice types
+            InvoiceType.Item16 => (ReceiptCase.UnknownReceipt0x0000, true, false),
+            InvoiceType.Item24 => (ReceiptCase.UnknownReceipt0x0000, true, false),
+            InvoiceType.Item51 => (ReceiptCase.UnknownReceipt0x0000, true, false),
+            InvoiceType.Item52 => (ReceiptCase.UnknownReceipt0x0000, true, false),
+
+            // Everything else maps to a generic invoice base
+            _ => (ReceiptCase.UnknownReceipt0x0000, false, false),
+        };
+    }
+
+    private static object BuildReceiptCaseData(AadeBookInvoiceType invoice)
+    {
+        var invoiceTypeStr = GetXmlEnumValue(invoice.invoiceHeader.invoiceType);
+
+        return new
+        {
+            GR = new
+            {
+                // Series and AA are intentionally NOT propagated from the input —
+                // the GR middleware assigns its own series/serial when signing.
+                mydataoverride = new
+                {
+                    invoice = new
+                    {
+                        invoiceHeader = new
+                        {
+                            invoiceType = invoiceTypeStr,
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    private static string? GetXmlEnumValue(InvoiceType value)
+    {
+        var member = typeof(InvoiceType).GetMember(value.ToString()).FirstOrDefault();
+        var attr = member?.GetCustomAttribute<XmlEnumAttribute>();
+        return attr?.Name ?? value.ToString();
+    }
+}

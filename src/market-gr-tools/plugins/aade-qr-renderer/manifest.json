@@ -1,0 +1,9 @@
+{
+  "id": "aade-qr-renderer",
+  "name": "AADE QR renderer",
+  "description": "Inverse of the QR → myDATA plugin: given an invoice MARK (and optional issuer UID + authenticationCode) build the canonical AADE myDATA receipt URL and render its QR code locally. You can also paste a downloadingInvoiceUrl from the provider response directly.",
+  "version": "2026.05.1",
+  "entry": "./index.js",
+  "changelog": "./CHANGELOG.md",
+  "apiVersion": 1
+}

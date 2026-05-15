@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MyDataConverter</RootNamespace>
+    <AssemblyName>MyDataConverter.Core</AssemblyName>
+    <NoWarn>CS8618;CS8625;CS8600;CS8601;CS8602;CS8603;CS8604</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Scheme\*.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="fiskaltrust.interface" Version="1.3.78-rc1-25294-86170" />
+    <!-- fiskaltrust.interface has [JsonConverter] attributes that lazily load
+         Newtonsoft.Json at runtime. The package is pulled in transitively but
+         we reference it explicitly so the assembly is ALWAYS deployed (in
+         particular for the trimming-disabled WASM publish). -->
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+</Project>

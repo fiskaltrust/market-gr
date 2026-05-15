@@ -1,0 +1,9 @@
+{
+  "id": "qr-to-mydata",
+  "name": "QR → myDATA payload",
+  "description": "Paste, drop, or pick an image of a Greek receipt QR code. The plugin decodes it locally, then fetches the AADE myDATA XML or PDF for the encoded URL.",
+  "version": "2026.05.1",
+  "entry": "./index.js",
+  "changelog": "./CHANGELOG.md",
+  "apiVersion": 1
+}
